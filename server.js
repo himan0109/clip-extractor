@@ -471,6 +471,270 @@ app.post('/stop-clipout-shorts/:clipoutId', (req, res) => {
   res.json({ success: true, message: 'Clipout Shorts processing stopped' });
 });
 
+// ── YouTube → Get SRT ──────────────────────────────────────────────────────
+
+const activeYtSrtJobs = new Map();
+
+app.post('/youtube-get-srt', async (req, res) => {
+  const { youtube_url, max_words = '8', model_name = 'tiny.en' } = req.body;
+
+  if (!youtube_url || !youtube_url.trim()) {
+    return res.status(400).json({ error: 'youtube_url is required' });
+  }
+
+  const jobId  = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const jobDir = path.join(__dirname, 'output', `ytsrt_${jobId}`);
+  fs.mkdirSync(jobDir, { recursive: true });
+
+  const jobInfo = {
+    status: 'downloading',
+    logs: [],
+    srtPath: null,
+    error: null
+  };
+  activeYtSrtJobs.set(jobId, jobInfo);
+  setTimeout(() => activeYtSrtJobs.delete(jobId), 2 * 60 * 60 * 1000);
+
+  res.json({ jobId });
+
+  const videoTemplate = path.join(jobDir, 'video.%(ext)s');
+  const { spawn } = require('child_process');
+
+  const ytdlp = spawn('yt-dlp', [
+    '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+    '--merge-output-format', 'mp4',
+    '-o', videoTemplate,
+    '--no-playlist',
+    '--no-mtime',
+    youtube_url.trim()
+  ]);
+
+  let downloadedPath = null;
+
+  ytdlp.stdout.on('data', (data) => {
+    const msg = data.toString().trimEnd();
+    msg.split('\n').forEach(line => {
+      if (line.trim()) jobInfo.logs.push(line.trim());
+    });
+    const mergeMatch = msg.match(/Merging formats into "(.+?)"/);
+    if (mergeMatch) downloadedPath = mergeMatch[1];
+    const destMatch  = msg.match(/\[download\] Destination: (.+)$/);
+    if (destMatch)   downloadedPath = destMatch[1];
+  });
+
+  ytdlp.stderr.on('data', (data) => {
+    data.toString().split('\n').forEach(line => {
+      if (line.trim()) jobInfo.logs.push(line.trim());
+    });
+  });
+
+  ytdlp.on('close', (code) => {
+    if (code !== 0) {
+      jobInfo.status = 'failed';
+      jobInfo.error  = 'yt-dlp exited with code ' + code;
+      return;
+    }
+
+    if (!downloadedPath || !fs.existsSync(downloadedPath)) {
+      const files = fs.existsSync(jobDir)
+        ? fs.readdirSync(jobDir).filter(f => /\.(mp4|mkv|webm|m4a)$/i.test(f))
+        : [];
+      if (files.length === 0) {
+        jobInfo.status = 'failed';
+        jobInfo.error  = 'Downloaded video file not found in job directory';
+        return;
+      }
+      downloadedPath = path.join(jobDir, files[0]);
+    }
+
+    jobInfo.status = 'transcribing';
+    jobInfo.logs.push('⏳ Starting Whisper transcription...');
+
+    const srtPath  = path.join(jobDir, 'output.srt');
+    const srtgen = spawn(getPythonPath(), [
+      '-u',
+      'srtgen.py',
+      downloadedPath,
+      String(max_words),
+      String(model_name),
+      '--output', srtPath
+    ]);
+
+    srtgen.stdout.on('data', (data) => {
+      data.toString().split('\n').forEach(line => {
+        if (line.trim()) jobInfo.logs.push(line.trim());
+      });
+    });
+
+    srtgen.stderr.on('data', (data) => {
+      data.toString().split('\n').forEach(line => {
+        if (line.trim() && line.length < 200) jobInfo.logs.push(line.trim());
+      });
+    });
+
+    srtgen.on('close', (srtCode) => {
+      try { fs.unlinkSync(downloadedPath); } catch (_) {}
+
+      if (srtCode !== 0 || !fs.existsSync(srtPath) || fs.statSync(srtPath).size === 0) {
+        jobInfo.status = 'failed';
+        jobInfo.error  = 'srtgen.py exited with code ' + srtCode;
+        return;
+      }
+
+      jobInfo.status  = 'completed';
+      jobInfo.srtPath = srtPath;
+      jobInfo.logs.push('✅ SRT file ready for download!');
+
+      setTimeout(() => {
+        try {
+          if (fs.existsSync(srtPath))  fs.unlinkSync(srtPath);
+          if (fs.existsSync(jobDir))   fs.rmSync(jobDir, { recursive: true, force: true });
+        } catch (_) {}
+        activeYtSrtJobs.delete(jobId);
+      }, 3_600_000);
+    });
+  });
+});
+
+app.get('/youtube-srt-progress/:jobId', (req, res) => {
+  const job = activeYtSrtJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json({ status: job.status, logs: job.logs, error: job.error });
+});
+
+app.get('/youtube-srt-download/:jobId', (req, res) => {
+  const job = activeYtSrtJobs.get(req.params.jobId);
+  if (!job || job.status !== 'completed' || !job.srtPath || !fs.existsSync(job.srtPath)) {
+    return res.status(404).json({ error: 'SRT file not ready or already expired' });
+  }
+  res.download(job.srtPath, 'subtitles.srt', (err) => {
+    if (err) console.error('❌ Error sending SRT:', err);
+  });
+});
+
+// ── YouTube → Download Video Only ──────────────────────────────────────────
+
+const activeYtDlJobs = new Map();
+
+function buildYtdlpFormatArg(quality, format) {
+  if (quality === 'audio') return null;
+  const ext = format || 'mp4';
+  if (quality === 'best') {
+    return `bestvideo[ext=${ext}]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=${ext}]/best`;
+  }
+  const height = quality.replace('p', '');
+  return `bestvideo[height<=${height}][ext=${ext}]+bestaudio[ext=m4a]/bestvideo[height<=${height}]+bestaudio/best[height<=${height}][ext=${ext}]/best[height<=${height}]`;
+}
+
+app.post('/youtube-download-video', async (req, res) => {
+  const { youtube_url, quality = 'best', format = 'mp4' } = req.body;
+
+  if (!youtube_url || !youtube_url.trim()) {
+    return res.status(400).json({ error: 'youtube_url is required' });
+  }
+
+  const jobId  = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const jobDir = path.join(__dirname, 'output', `ytdl_${jobId}`);
+  fs.mkdirSync(jobDir, { recursive: true });
+
+  const isAudio = quality === 'audio';
+  const ext     = isAudio ? 'mp3' : (format || 'mp4');
+
+  const jobInfo = {
+    status: 'downloading',
+    logs: [],
+    filePath: null,
+    filename: null,
+    error: null
+  };
+  activeYtDlJobs.set(jobId, jobInfo);
+  setTimeout(() => activeYtDlJobs.delete(jobId), 2 * 60 * 60 * 1000);
+
+  res.json({ jobId });
+
+  const videoTemplate = path.join(jobDir, `video.%(ext)s`);
+  const { spawn }     = require('child_process');
+
+  const ytdlpArgs = isAudio
+    ? ['-x', '--audio-format', 'mp3', '--audio-quality', '0', '-o', videoTemplate, '--no-playlist', '--no-mtime', youtube_url.trim()]
+    : ['-f', buildYtdlpFormatArg(quality, format), '--merge-output-format', format, '-o', videoTemplate, '--no-playlist', '--no-mtime', youtube_url.trim()];
+
+  const ytdlp = spawn('yt-dlp', ytdlpArgs);
+  let resolvedPath = null;
+
+  ytdlp.stdout.on('data', (data) => {
+    data.toString().split('\n').forEach(line => {
+      const l = line.trim();
+      if (!l) return;
+      jobInfo.logs.push(l);
+      const mergeMatch = l.match(/Merging formats into "(.+?)"/);
+      if (mergeMatch) resolvedPath = mergeMatch[1];
+      const destMatch  = l.match(/\[download\] Destination: (.+)$/);
+      if (destMatch)   resolvedPath = destMatch[1];
+      const audioMatch = l.match(/\[ExtractAudio\] Destination: (.+)$/);
+      if (audioMatch)  resolvedPath = audioMatch[1];
+    });
+  });
+
+  ytdlp.stderr.on('data', (data) => {
+    data.toString().split('\n').forEach(line => {
+      if (line.trim()) jobInfo.logs.push(line.trim());
+    });
+  });
+
+  ytdlp.on('close', (code) => {
+    if (code !== 0) {
+      jobInfo.status = 'failed';
+      jobInfo.error  = 'yt-dlp exited with code ' + code;
+      return;
+    }
+
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+      const allowed = new Set(['.mp4', '.webm', '.mkv', '.mp3', '.m4a', '.opus']);
+      const files   = fs.existsSync(jobDir)
+        ? fs.readdirSync(jobDir).filter(f => allowed.has(path.extname(f).toLowerCase()))
+        : [];
+      if (files.length === 0) {
+        jobInfo.status = 'failed';
+        jobInfo.error  = 'Downloaded file not found in job directory';
+        return;
+      }
+      const preferred = files.find(f => f.endsWith(`.${ext}`)) || files[0];
+      resolvedPath    = path.join(jobDir, preferred);
+    }
+
+    const filename       = `video_${jobId}.${path.extname(resolvedPath).slice(1)}`;
+    jobInfo.status   = 'completed';
+    jobInfo.filePath = resolvedPath;
+    jobInfo.filename = filename;
+    jobInfo.logs.push('✅ Download complete! File is ready.');
+
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(resolvedPath)) fs.unlinkSync(resolvedPath);
+        if (fs.existsSync(jobDir)) fs.rmSync(jobDir, { recursive: true, force: true });
+      } catch (_) {}
+      activeYtDlJobs.delete(jobId);
+    }, 3_600_000);
+  });
+});
+
+app.get('/youtube-download-progress/:jobId', (req, res) => {
+  const job = activeYtDlJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json({ status: job.status, logs: job.logs, error: job.error, filename: job.filename });
+});
+
+app.get('/youtube-download-file/:jobId', (req, res) => {
+  const job = activeYtDlJobs.get(req.params.jobId);
+  if (!job || job.status !== 'completed' || !job.filePath || !fs.existsSync(job.filePath)) {
+    return res.status(404).json({ error: 'File not ready or already expired' });
+  }
+  res.download(job.filePath, job.filename, (err) => {
+    if (err) console.error('❌ Error sending video file:', err);
+  });
+});
+
 app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Clip Extractor running at http://localhost:${port}`);
 });

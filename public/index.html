@@ -80,12 +80,21 @@
     @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
 
     code { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .tab-nav { display:flex; gap:8px; margin-bottom:24px; border-bottom:1px solid var(--border-color); padding-bottom:0; }
+    .tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--text-secondary); cursor:pointer; font-size:13px; font-weight:600; padding:10px 16px; margin-bottom:-1px; transition:color .15s,border-color .15s; }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-panel { display:none; } .tab-panel.active { display:block; }
   </style>
 </head>
 <body>
 <div class="page-wrap">
   <h1 class="app-title">✂️ Clip Extractor <span class="tag">PORT 3001</span></h1>
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="clip-extractor">Clip Extractor</button>
+    <button class="tab-btn" data-tab="youtube-tools">YouTube Tools</button>
+  </div>
 
+  <div class="tab-panel active" id="tab-clip-extractor">
   <div class="two-col">
     <!-- LEFT COLUMN -->
     <div>
@@ -298,6 +307,86 @@
       </div>
     </div>
   </div><!-- end two-col -->
+  </div><!-- end tab-clip-extractor -->
+
+  <!-- YouTube Tools Tab -->
+  <div class="tab-panel" id="tab-youtube-tools">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+      <div>
+        <div class="panel-heading">GET SRT FROM YOUTUBE</div>
+        <div class="control-row" style="margin-top:20px;">
+          <div class="control-label">YouTube URL</div>
+          <input type="text" id="ytSrtUrl" placeholder="https://www.youtube.com/watch?v=..." class="control-input" style="width:100%;">
+        </div>
+        <div style="margin-top:20px;padding:16px;background:var(--card-bg);border-radius:10px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px;">Transcription Settings</div>
+          <div class="control-row"><div class="control-label">Max Words Per Line</div><input type="number" id="ytSrtMaxWords" min="1" max="20" value="8" class="control-input"></div>
+          <div class="control-row" style="margin-top:12px;">
+            <div class="control-label">Whisper Model</div>
+            <div class="radio-input">
+              <label><input type="radio" name="ytSrtModel" value="tiny.en" checked><span>Tiny</span></label>
+              <label><input type="radio" name="ytSrtModel" value="base.en"><span>Base</span></label>
+              <label><input type="radio" name="ytSrtModel" value="small.en"><span>Small</span></label>
+              <label><input type="radio" name="ytSrtModel" value="medium.en"><span>Medium</span></label>
+              <span class="selection"></span>
+            </div>
+          </div>
+        </div>
+        <button id="ytSrtStartBtn" class="btn-generate" style="margin-top:20px;width:100%;">▶ Get SRT</button>
+        <div id="ytSrtLogContainer" style="display:none;margin-top:20px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Progress</div>
+          <div id="ytSrtLog" style="background:#0d1117;border:1px solid var(--border-color);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#8b949e;height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></div>
+        </div>
+        <div id="ytSrtDownloadContainer" style="display:none;margin-top:16px;">
+          <button id="ytSrtDownloadBtn" class="btn-generate" style="width:100%;background:linear-gradient(135deg,#28a745,#20c997);">⬇ Download SRT File</button>
+        </div>
+      </div>
+      <div>
+        <div class="panel-heading">HOW IT WORKS</div>
+        <div style="margin-top:20px;padding:15px;background:var(--card-bg);border-radius:8px;font-size:13px;color:var(--text-secondary);">
+          This tool will:<ul style="margin-top:8px;padding-left:20px;">
+            <li>Download the YouTube video using <strong>yt-dlp</strong></li>
+            <li>Transcribe the audio using <strong>Whisper AI</strong></li>
+            <li>Generate a timestamped <strong>.srt</strong> subtitle file</li>
+            <li>Offer the SRT for direct download</li>
+          </ul>
+        </div>
+        <div id="ytSrtStatusBadge" style="display:none;margin-top:20px;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;text-align:center;"></div>
+      </div>
+    </div>
+
+    <div style="margin:32px 0;display:flex;align-items:center;gap:12px;">
+      <div style="flex:1;height:1px;background:var(--border-color);"></div>
+      <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-secondary);white-space:nowrap;">or download video only</span>
+      <div style="flex:1;height:1px;background:var(--border-color);"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+      <div>
+        <div class="panel-heading">DOWNLOAD VIDEO</div>
+        <div class="control-row" style="margin-top:20px;"><div class="control-label">YouTube URL</div><input type="text" id="ytDlUrl" placeholder="https://www.youtube.com/watch?v=..." class="control-input" style="width:100%;"></div>
+        <div style="margin-top:20px;padding:16px;background:var(--card-bg);border-radius:10px;">
+          <div class="control-row"><div class="control-label">Quality</div><select id="ytDlQuality" class="control-input"><option value="best">Best Available</option><option value="2160p">4K (2160p)</option><option value="1440p">1440p</option><option value="1080p">1080p</option><option value="720p">720p</option><option value="480p">480p</option><option value="360p">360p</option><option value="audio">Audio Only (MP3)</option></select></div>
+          <div class="control-row" style="margin-top:12px;" id="ytDlFormatRow"><div class="control-label">Format</div><select id="ytDlFormat" class="control-input"><option value="mp4">MP4</option><option value="webm">WebM</option><option value="mkv">MKV</option></select></div>
+        </div>
+        <button id="ytDlStartBtn" class="btn-generate" style="margin-top:20px;width:100%;">⬇ Download Video</button>
+        <div id="ytDlLogContainer" style="display:none;margin-top:20px;">
+          <div id="ytDlLog" style="background:#0d1117;border:1px solid var(--border-color);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#8b949e;height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></div>
+        </div>
+        <div id="ytDlFileContainer" style="display:none;margin-top:16px;">
+          <a id="ytDlFileLink" href="#" class="btn-generate" style="display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,#28a745,#20c997);">⬇ Download Video File</a>
+        </div>
+      </div>
+      <div>
+        <div class="panel-heading">QUALITY GUIDE</div>
+        <div style="margin-top:20px;padding:15px;background:var(--card-bg);border-radius:8px;font-size:13px;color:var(--text-secondary);">
+          <strong style="color:var(--text-primary);">Tip:</strong> File stays on server for 1 hour. Click download to save locally.
+        </div>
+        <div id="ytDlStatusBadge" style="display:none;margin-top:20px;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;text-align:center;"></div>
+      </div>
+    </div>
+  </div><!-- end tab-youtube-tools -->
+
 </div><!-- end page-wrap -->
 
 <!-- Facebook/Instagram Connection Modal -->
@@ -888,6 +977,179 @@ async function startFacebookOAuth() {
   const check=setInterval(()=>{ if(popup.closed){ clearInterval(check); window.removeEventListener('message',handler); } },500);
 }
 document.getElementById('signInFacebookBtn')?.addEventListener('click', startFacebookOAuth);
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab)?.classList.add('active');
+  });
+});
+
+// ── YouTube → Get SRT tab ──────────────────────────────────────────────────
+(function initYtSrt() {
+  const startBtn     = document.getElementById('ytSrtStartBtn');
+  const downloadBtn  = document.getElementById('ytSrtDownloadBtn');
+  const urlInput     = document.getElementById('ytSrtUrl');
+  const logContainer = document.getElementById('ytSrtLogContainer');
+  const logEl        = document.getElementById('ytSrtLog');
+  const dlContainer  = document.getElementById('ytSrtDownloadContainer');
+  const statusBadge  = document.getElementById('ytSrtStatusBadge');
+  let activeJobId    = null;
+  let pollTimer      = null;
+
+  function setStatus(msg, color) {
+    if (!statusBadge) return;
+    statusBadge.style.display = 'block';
+    statusBadge.style.background = color + '22';
+    statusBadge.style.color = color;
+    statusBadge.style.border = '1px solid ' + color + '44';
+    statusBadge.textContent = msg;
+  }
+
+  function appendLog(lines) {
+    if (!logEl) return;
+    lines.forEach(l => { logEl.textContent += l + '\n'; });
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  startBtn?.addEventListener('click', async () => {
+    const url = urlInput?.value.trim();
+    if (!url) { alert('Please enter a YouTube URL'); return; }
+    const maxWords  = document.getElementById('ytSrtMaxWords')?.value || '8';
+    const modelName = document.querySelector('input[name="ytSrtModel"]:checked')?.value || 'tiny.en';
+
+    startBtn.disabled = true;
+    startBtn.textContent = '⏳ Processing…';
+    if (logContainer) logContainer.style.display = 'block';
+    if (logEl) logEl.textContent = '';
+    if (dlContainer) dlContainer.style.display = 'none';
+    setStatus('Starting…', '#6366f1');
+
+    try {
+      const res = await fetch('/youtube-get-srt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ youtube_url: url, max_words: maxWords, model_name: modelName })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      activeJobId = data.jobId;
+
+      pollTimer = setInterval(async () => {
+        try {
+          const r    = await fetch('/youtube-srt-progress/' + activeJobId);
+          const job  = await r.json();
+          if (job.logs?.length) appendLog(job.logs.slice(-(job.logs.length)));
+          if (job.status === 'completed') {
+            clearInterval(pollTimer);
+            startBtn.disabled = false; startBtn.textContent = '▶ Get SRT';
+            if (dlContainer) dlContainer.style.display = 'block';
+            setStatus('✅ Ready to download', '#22c55e');
+          } else if (job.status === 'failed') {
+            clearInterval(pollTimer);
+            startBtn.disabled = false; startBtn.textContent = '▶ Get SRT';
+            setStatus('❌ ' + (job.error || 'Failed'), '#ef4444');
+          }
+        } catch (e) { clearInterval(pollTimer); setStatus('❌ Poll error: ' + e.message, '#ef4444'); }
+      }, 2000);
+    } catch (err) {
+      startBtn.disabled = false; startBtn.textContent = '▶ Get SRT';
+      setStatus('❌ ' + err.message, '#ef4444');
+    }
+  });
+
+  downloadBtn?.addEventListener('click', () => {
+    if (activeJobId) window.location.href = '/youtube-srt-download/' + activeJobId;
+  });
+})();
+
+// ── YouTube → Download Video Only ─────────────────────────────────────────
+(function initYtDl() {
+  const startBtn     = document.getElementById('ytDlStartBtn');
+  const urlInput     = document.getElementById('ytDlUrl');
+  const logContainer = document.getElementById('ytDlLogContainer');
+  const logEl        = document.getElementById('ytDlLog');
+  const fileContainer = document.getElementById('ytDlFileContainer');
+  const fileLink     = document.getElementById('ytDlFileLink');
+  const statusBadge  = document.getElementById('ytDlStatusBadge');
+  let activeJobId    = null;
+  let pollTimer      = null;
+
+  function setStatus(msg, color) {
+    if (!statusBadge) return;
+    statusBadge.style.display = 'block';
+    statusBadge.style.background = color + '22';
+    statusBadge.style.color = color;
+    statusBadge.style.border = '1px solid ' + color + '44';
+    statusBadge.textContent = msg;
+  }
+
+  function appendLog(l) {
+    if (!logEl) return;
+    logEl.textContent += l + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function startPolling(jobId) {
+    pollTimer = setInterval(async () => {
+      try {
+        const r   = await fetch('/youtube-download-progress/' + jobId);
+        const job = await r.json();
+        if (job.logs?.length) { logEl.textContent = job.logs.join('\n') + '\n'; logEl.scrollTop = logEl.scrollHeight; }
+        if (job.status === 'completed') {
+          clearInterval(pollTimer);
+          startBtn.disabled = false; startBtn.textContent = '⬇ Download Video';
+          if (fileContainer) fileContainer.style.display = 'block';
+          if (fileLink) { fileLink.href = `/youtube-download-file/${jobId}`; fileLink.setAttribute('download', job.filename || 'video.mp4'); }
+          setStatus('✅ File ready', '#22c55e');
+        } else if (job.status === 'failed') {
+          clearInterval(pollTimer);
+          startBtn.disabled = false; startBtn.textContent = '⬇ Download Video';
+          setStatus('❌ ' + (job.error || 'Failed'), '#ef4444');
+        }
+      } catch (e) { clearInterval(pollTimer); setStatus('❌ Poll error: ' + e.message, '#ef4444'); }
+    }, 2000);
+  }
+
+  // Hide format row for audio-only
+  document.getElementById('ytDlQuality')?.addEventListener('change', e => {
+    const row = document.getElementById('ytDlFormatRow');
+    if (row) row.style.display = e.target.value === 'audio' ? 'none' : 'flex';
+  });
+
+  startBtn?.addEventListener('click', async () => {
+    const url = urlInput?.value.trim();
+    if (!url) { alert('Please enter a YouTube URL'); return; }
+    const quality = document.getElementById('ytDlQuality')?.value || 'best';
+    const format  = document.getElementById('ytDlFormat')?.value  || 'mp4';
+
+    startBtn.disabled = true; startBtn.textContent = '⏳ Downloading…';
+    if (logContainer) logContainer.style.display = 'block';
+    if (logEl) logEl.textContent = '';
+    if (fileContainer) fileContainer.style.display = 'none';
+    setStatus('Downloading…', '#6366f1');
+
+    try {
+      const res  = await fetch('/youtube-download-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ youtube_url: url, quality, format })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      activeJobId = data.jobId;
+      appendLog('Job ID: ' + activeJobId);
+      startPolling(activeJobId);
+    } catch (err) {
+      setStatus('❌ ' + err.message, '#ef4444');
+      appendLog('Error: ' + err.message);
+      startBtn.disabled = false; startBtn.textContent = '⬇ Download Video';
+    }
+  });
+})();
 </script>
 </body>
 </html>
