@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clip Extractor</title>
+  <style>
+    :root {
+      --bg-primary: #0d0d0f;
+      --bg-secondary: #141416;
+      --bg-color: #0d0d0f;
+      --card-bg: #1a1a1f;
+      --border-color: #2a2a35;
+      --accent: #6366f1;
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888a0;
+      --success: #22c55e;
+      --error: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg-primary); color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+    a { color: var(--accent); }
+    .page-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+    h1.app-title { font-size: 22px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-primary); margin-bottom: 28px; display: flex; align-items: center; gap: 10px; }
+    h1.app-title span.tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: rgba(99,102,241,0.18); color: var(--accent); font-weight: 600; letter-spacing: 0.05em; }
+
+    /* Panel */
+    .panel-heading { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px; }
+    .panel-subtitle { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+    /* Controls */
+    .control-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .control-label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+    .control-input { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); padding: 8px 10px; font-size: 13px; outline: none; transition: border-color 0.15s; min-width: 0; }
+    .control-input:focus { border-color: var(--accent); }
+    select.control-input option { background: var(--bg-secondary); }
+
+    /* Buttons */
+    .btn-generate { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+    .btn-generate:hover { opacity: 0.85; }
+    .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: var(--card-bg); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 14px; font-size: 12px; cursor: pointer; }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Toggle switch */
+    .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+    .switch input { display: none; }
+    .slider { position: absolute; inset: 0; background: var(--border-color); border-radius: 22px; cursor: pointer; transition: background 0.2s; }
+    .slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider:before { transform: translateX(18px); }
+
+    /* Radio input */
+    .radio-input { display: flex; flex-wrap: wrap; gap: 6px; }
+    .radio-input label { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); font-size: 12px; transition: border-color 0.15s; }
+    .radio-input label:has(input:checked) { border-color: var(--accent); }
+    .radio-input .selection { display: none; }
+
+    /* Upload area */
+    .upload-area { border: 2px dashed var(--border-color); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.15s; }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--accent); }
+    .upload-icon { color: var(--text-secondary); margin-bottom: 8px; }
+    .upload-text { font-size: 13px; color: var(--text-secondary); }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-content { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 16px; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--border-color); font-weight: 700; }
+    .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 22px; cursor: pointer; line-height: 1; padding: 0 4px; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-body { padding: 24px; }
+    .modal-footer { display: flex; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--border-color); }
+
+    /* Card */
+    .card { background: var(--card-bg); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+
+    /* Grid layout */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+    code { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+  <h1 class="app-title">✂️ Clip Extractor <span class="tag">PORT 3001</span></h1>
+
+  <div class="two-col">
+    <!-- LEFT COLUMN -->
+    <div>
+      <div class="panel-subtitle" style="margin-bottom:16px;font-weight:600;">Upload Source Video</div>
+      <div style="margin-bottom:14px;padding:12px;border-radius:10px;background:rgba(0,153,255,0.10);border-left:3px solid rgba(0,153,255,0.75);">
+        <div class="control-row" style="margin-bottom:6px;">
+          <div class="control-label">Use video path from CSV</div>
+          <label class="switch"><input type="checkbox" id="clipout_use_video_path_from_csv"><span class="slider"></span></label>
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">Each CSV row provides a path via <strong style="color:var(--accent);">video_path</strong> or <strong style="color:var(--accent);">source_video_path</strong>.</div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <input type="file" id="clipoutVideoInput" accept="video/*" style="display:none;">
+        <label for="clipoutVideoInput" class="btn-generate" style="display:inline-block;cursor:pointer;text-align:center;padding:12px 24px;">Choose Video File</label>
+        <div id="clipoutVideoNameDisplay" style="margin-top:10px;color:var(--text-secondary);font-size:14px;"></div>
+      </div>
+
+      <div class="panel-subtitle" style="margin-top:30px;margin-bottom:16px;font-weight:600;">Upload CSV/Excel File</div>
+      <div style="margin-bottom:20px;">
+        <input type="file" id="clipoutCsvFileInput" accept=".csv,.xlsx,.xls" style="display:none;">
+        <label for="clipoutCsvFileInput" class="btn-generate" style="display:inline-block;cursor:pointer;text-align:center;padding:12px 24px;">Choose CSV/Excel File</label>
+        <div id="clipoutCsvFileNameDisplay" style="margin-top:10px;color:var(--text-secondary);font-size:14px;"></div>
+      </div>
+
+      <div class="panel-subtitle" style="margin-top:30px;margin-bottom:16px;font-weight:600;">CSV/Excel Format</div>
+      <div class="card" style="font-size:13px;color:var(--text-secondary);">
+        Required: <strong style="color:var(--accent);">timestamp_start</strong>, <strong style="color:var(--accent);">timestamp_end</strong>, <strong style="color:var(--accent);">title</strong>, <strong style="color:var(--accent);">description</strong>, <strong style="color:var(--accent);">upload_date</strong>, <strong style="color:var(--accent);">upload_time</strong><br>
+        Optional: <strong style="color:var(--accent);">video_path</strong><br>
+        Timestamp: HH:MM:SS or MM:SS &nbsp;|&nbsp; Date: YYYY-MM-DD &nbsp;|&nbsp; Time: HH:MM IST
+      </div>
+
+      <div class="panel-subtitle" style="margin-top:30px;margin-bottom:16px;font-weight:600;">Platform Selection</div>
+
+      <div style="margin-bottom:20px;">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">📺 YouTube Channel(s)</div>
+        <select id="clipoutYoutubeChannelSelect" multiple class="control-input" style="width:100%;padding:10px;min-height:100px;">
+          <option value="" disabled>Select one or more YouTube Channels (Hold Ctrl/Cmd to select multiple)</option>
+        </select>
+        <button id="clipoutConnectYouTubeBtn" class="btn-generate" style="margin-top:10px;width:100%;padding:10px;">🔗 Connect YouTube Channel</button>
+        <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">Right-click a connected channel to disconnect.</div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">📱 Instagram Account (Optional)</div>
+        <select id="clipoutInstagramAccountSelect" class="control-input" style="width:100%;padding:10px;">
+          <option value="">Select Instagram Account (Optional)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">👥 Facebook Page (Optional)</div>
+        <select id="clipoutFacebookPageSelect" class="control-input" style="width:100%;padding:10px;">
+          <option value="">Select Facebook Page (Optional)</option>
+        </select>
+        <button id="clipoutConnectFacebookBtn" class="btn-generate" style="margin-top:10px;width:100%;padding:10px;">🔗 Connect Instagram / Facebook</button>
+      </div>
+
+      <!-- Browser Posts -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Browser Posts (Optional)</div>
+        <div class="card" style="margin-bottom:10px;">
+          <div class="control-row" style="margin-bottom:6px;">
+            <div class="control-label">Facebook Browser Reel</div>
+            <label class="switch"><input type="checkbox" id="clipout_enable_browser_post"><span class="slider"></span></label>
+          </div>
+          <div id="clipout_browser_post_options" style="display:none;margin-top:10px;padding:10px;background:rgba(0,153,255,0.08);border-radius:8px;">
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">Select account:</div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="radio" name="clipout_browser_post_account" value="wise_reel" checked><span style="font-size:13px;">BeWise Reel</span></label>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:8px;line-height:1.5;">Uploads as Facebook Reel via Meta Business Suite.</div>
+        </div>
+        <div class="card">
+          <div class="control-row" style="margin-bottom:6px;">
+            <div class="control-label">YouTube Browser Upload</div>
+            <label class="switch"><input type="checkbox" id="clipout_enable_youtube_browser"><span class="slider"></span></label>
+          </div>
+          <div id="clipout_youtube_browser_options" style="display:none;margin-top:10px;padding:10px;background:rgba(255,0,0,0.06);border-radius:8px;">
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">Select channel:</div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;"><input type="radio" name="clipout_youtube_browser_account" value="beahead_yt" checked><span style="font-size:13px;">BeAhead YouTube</span></label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="radio" name="clipout_youtube_browser_account" value="bewise_yt"><span style="font-size:13px;">BeWise YouTube</span></label>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:8px;line-height:1.5;">Uploads via YouTube Studio browser — no API quota.</div>
+        </div>
+      </div>
+
+      <!-- Use platforms from CSV -->
+      <div style="margin-bottom:20px;padding:12px;border-radius:10px;background:rgba(0,153,255,0.10);border-left:3px solid rgba(0,153,255,0.75);">
+        <div class="control-row" style="margin-bottom:8px;">
+          <div class="control-label">Use platforms from CSV</div>
+          <label class="switch"><input type="checkbox" id="clipout_use_platforms_from_csv"><span class="slider"></span></label>
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">When enabled, platforms come per-row from CSV columns: <strong style="color:var(--accent);">youtube channel</strong>, <strong style="color:var(--accent);">instagram page</strong>, <strong style="color:var(--accent);">facebook page</strong>.</div>
+      </div>
+
+      <!-- Watermark -->
+      <div class="panel-subtitle" style="margin-top:30px;margin-bottom:16px;font-weight:600;">Watermark (Optional)</div>
+      <div class="card">
+        <div class="control-row"><div class="control-label">Enable Watermark</div><label class="switch"><input type="checkbox" id="clipout_enable_watermark"><span class="slider"></span></label></div>
+        <div style="margin:10px 0;padding:10px;border-radius:10px;background:rgba(0,153,255,0.10);border-left:3px solid rgba(0,153,255,0.75);">
+          <div class="control-row" style="margin-bottom:6px;"><div class="control-label">Use watermark text from CSV</div><label class="switch"><input type="checkbox" id="clipout_use_watermark_text_from_csv"><span class="slider"></span></label></div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">Reads per-row from column <strong style="color:var(--accent);">watermark text</strong>.</div>
+        </div>
+        <div class="control-row"><div class="control-label">Watermark Text</div><input type="text" id="clipout_watermark_text" class="control-input" placeholder="Your watermark"></div>
+        <div class="control-row"><div class="control-label">Position</div>
+          <select id="clipout_watermark_position" class="control-input">
+            <option value="top-left">Top Left</option><option value="top-middle">Top Middle</option><option value="top-right">Top Right</option>
+            <option value="bottom-left">Bottom Left</option><option value="bottom-middle">Bottom Middle</option><option value="bottom-right" selected>Bottom Right</option>
+          </select></div>
+        <div class="control-row"><div class="control-label">Font Size</div>
+          <select id="clipout_watermark_size" class="control-input"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></div>
+        <div class="control-row"><div class="control-label">Opacity (%)</div><input type="number" id="clipout_watermark_opacity" class="control-input" value="70" min="0" max="100"></div>
+        <div class="control-row"><div class="control-label">Dark box behind text</div><label class="switch"><input type="checkbox" id="clipout_watermark_box" checked><span class="slider"></span></label></div>
+      </div>
+
+      <!-- Review -->
+      <div class="panel-subtitle" style="margin-top:30px;margin-bottom:16px;font-weight:600;">Review (Optional)</div>
+      <div class="card">
+        <div class="control-row"><div class="control-label">Review each short before upload</div><label class="switch"><input type="checkbox" id="clipout_review_before_upload"><span class="slider"></span></label></div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">Each short is generated and shown here for approval before upload.</div>
+        <div id="clipoutReviewBox" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-color);">
+          <div style="font-weight:600;margin-bottom:10px;">Current short awaiting approval</div>
+          <div id="clipoutReviewMeta" style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;"></div>
+          <video id="clipoutReviewVideo" controls loop style="width:100%;border-radius:10px;background:#000;max-height:520px;"></video>
+          <div style="display:flex;gap:10px;margin-top:12px;">
+            <button id="clipoutApproveBtn" class="btn-generate" style="flex:1;background:var(--success);">✅ Approve & Upload</button>
+            <button id="clipoutSkipBtn" class="btn-generate" style="flex:1;background:var(--border-color);">⏭️ Skip Upload</button>
+          </div>
+          <div id="clipoutReviewStatus" style="margin-top:10px;font-size:12px;color:var(--text-secondary);"></div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="margin-top:30px;">
+        <button id="startClipoutBtn" class="btn-generate" style="width:100%;padding:15px;font-size:16px;background:var(--success);">▶ Start Clipout Shorts</button>
+        <button id="stopClipoutBtn" class="btn-generate" style="width:100%;padding:15px;font-size:16px;background:var(--error);margin-top:10px;display:none;">⏹ Stop Processing</button>
+      </div>
+
+      <div id="clipoutStatus" style="margin-top:20px;padding:15px;background:var(--card-bg);border-radius:8px;display:none;">
+        <div style="font-weight:600;margin-bottom:10px;">Status:</div>
+        <div id="clipoutStatusText" style="color:var(--text-secondary);"></div>
+        <div style="margin-top:10px;">
+          <div style="font-size:12px;color:var(--text-secondary);">Progress: <span id="clipoutProgressText">0/0</span></div>
+          <div style="width:100%;height:8px;background:var(--border-color);border-radius:4px;margin-top:8px;overflow:hidden;">
+            <div id="clipoutProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <div class="panel-subtitle" style="margin-bottom:16px;font-weight:600;">Style</div>
+      <div class="card">
+        <div class="control-row"><div class="control-label">Select Style</div>
+          <select id="clipout_style" class="control-input">
+            <option value="1" selected>Style 1 – Cropped to 9:16</option>
+            <option value="2">Style 2 – Uncropped in portrait frame with background</option>
+            <option value="3">Style 3 – Two-face split or center crop (portrait)</option>
+          </select></div>
+        <div id="clipout_style2_options" style="display:none;margin-top:12px;padding:12px;background:rgba(0,153,255,0.08);border-radius:8px;border-left:3px solid rgba(0,153,255,0.5);">
+          <div class="control-row" style="margin-bottom:8px;"><div class="control-label">Background (from pictures folder)</div></div>
+          <select id="clipout_picture_background" class="control-input" style="width:100%;"><option value="" selected>Random (from pictures folder)</option></select>
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
+            <button type="button" id="clipoutRefreshBackgrounds" class="btn-secondary" style="padding:8px 12px;">Refresh list</button>
+            <div id="clipoutBackgroundsHint" style="font-size:12px;color:var(--text-secondary);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto Edit -->
+      <div class="card" style="margin-top:20px;">
+        <div class="control-row" style="margin-bottom:0;"><div class="control-label" style="font-weight:600;">Enable Auto Edit</div><label class="switch"><input type="checkbox" id="clipout_enable_auto_edit"><span class="slider"></span></label></div>
+        <div id="clipout_auto_edit_settings" style="display:none;margin-top:14px;border-top:1px solid var(--border-color);padding-top:14px;">
+          <div class="control-row"><div class="control-label">Enable Auto Cut</div><label class="switch"><input type="checkbox" id="clipout_enable_autocut"><span class="slider"></span></label></div>
+          <div class="control-row"><div class="control-label">Gap Threshold (s)</div><input type="number" id="clipout_gap_threshold" class="control-input" value="0.5" min="0.1" max="5" step="0.1"></div>
+          <div class="control-row"><div class="control-label">Transition Style</div><input type="text" id="clipout_transition_style" class="control-input" placeholder="e.g., burn, fade"></div>
+          <div class="control-row"><div class="control-label">Transition SFX</div><input type="text" id="clipout_transition_sfx" class="control-input" placeholder="e.g., click"></div>
+          <div class="control-row"><div class="control-label">Loudnorm</div><label class="switch"><input type="checkbox" id="clipout_loudnorm"><span class="slider"></span></label></div>
+          <div class="control-row"><div class="control-label">Zoom Pattern</div><input type="text" id="clipout_zoom_pattern" class="control-input" placeholder="e.g., in, out"></div>
+          <div class="control-row"><div class="control-label">Zoom Percent</div><input type="number" id="clipout_zoom_percent" class="control-input" value="10" min="0" max="50"></div>
+        </div>
+      </div>
+
+      <!-- Standard Subtitles -->
+      <div class="card" style="margin-top:12px;">
+        <div class="control-row" style="margin-bottom:0;"><div class="control-label" style="font-weight:600;">Enable Standard Subtitles</div><label class="switch"><input type="checkbox" id="clipout_enable_subtitles"><span class="slider"></span></label></div>
+        <div id="clipout_subtitle_settings" style="display:none;margin-top:14px;border-top:1px solid var(--border-color);padding-top:14px;">
+          <div class="control-row"><div class="control-label">Max Words Per Line</div><input type="number" id="clipout_max_words" class="control-input" value="1" min="1" max="20"></div>
+          <div class="control-row"><div class="control-label">Model</div>
+            <select id="clipout_model_name" class="control-input"><option value="tiny">Tiny</option><option value="base">Base</option><option value="small" selected>Small</option><option value="medium">Medium</option></select></div>
+          <div class="control-row"><div class="control-label">Font Name</div><input type="text" id="clipout_font_name" class="control-input" value="Fira Sans Ultra"></div>
+          <div class="control-row"><div class="control-label">Font Size</div><input type="number" id="clipout_font_size" class="control-input" value="15" min="10" max="50"></div>
+          <div class="control-row"><div class="control-label">Alignment</div><input type="number" id="clipout_alignment" class="control-input" value="2" min="1" max="9"></div>
+          <div class="control-row"><div class="control-label">Vertical Margin</div><input type="number" id="clipout_margin_v" class="control-input" value="75" min="0" max="200"></div>
+          <div class="control-row"><div class="control-label">Outline</div><input type="number" id="clipout_outline" class="control-input" value="0" min="0" max="10"></div>
+          <div class="control-row"><div class="control-label">Shadow</div><input type="number" id="clipout_shadow" class="control-input" value="2" min="0" max="10"></div>
+          <div class="control-row"><div class="control-label">Primary Color (RGB)</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="number" id="clipout_color_r" class="control-input" value="247" min="0" max="255" style="width:56px;">
+              <input type="number" id="clipout_color_g" class="control-input" value="209" min="0" max="255" style="width:56px;">
+              <input type="number" id="clipout_color_b" class="control-input" value="125" min="0" max="255" style="width:56px;">
+            </div></div>
+        </div>
+      </div>
+
+      <!-- HyperFrames -->
+      <div class="card" style="margin-top:12px;">
+        <div class="control-row" style="margin-bottom:0;"><div class="control-label" style="font-weight:600;">Enable HyperFrames Captions</div><label class="switch"><input type="checkbox" id="clipout_enable_hf"><span class="slider"></span></label></div>
+        <div id="clipout_hf_settings" style="display:none;margin-top:8px;"><div id="hfWidget_clipout"></div></div>
+      </div>
+    </div>
+  </div><!-- end two-col -->
+</div><!-- end page-wrap -->
+
+<!-- Facebook/Instagram Connection Modal -->
+<div id="facebookConnectModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header"><span>Connect Facebook/Instagram</span><button class="modal-close" id="closeFacebookModal">&times;</button></div>
+    <div class="modal-body">
+      <div style="margin-bottom:20px;font-size:14px;color:var(--text-secondary);">Enter your Facebook App credentials. You only need to do this once.</div>
+      <div class="control-row" style="margin-bottom:16px;"><div class="control-label">App ID</div><input type="text" id="modalAppId" class="control-input" style="width:100%;" placeholder="Enter your Facebook App ID" autocomplete="off"></div>
+      <div class="control-row" style="margin-bottom:16px;"><div class="control-label">App Secret</div><input type="password" id="modalAppSecret" class="control-input" style="width:100%;" placeholder="Enter your Facebook App Secret" autocomplete="off"></div>
+      <div style="margin-top:20px;margin-bottom:20px;padding:15px;background:rgba(255,193,7,0.15);border-radius:8px;font-size:13px;color:var(--text-secondary);border-left:3px solid #ffc107;">
+        <strong>Redirect URI:</strong><br>
+        <code id="facebookRedirectUri" style="display:inline-block;margin-top:5px;word-break:break-all;">http://localhost:3001/facebook/callback</code>
+        <button id="copyFacebookRedirectUri" class="btn-generate" style="margin-left:10px;padding:4px 12px;font-size:12px;">Copy</button>
+      </div>
+      <div style="margin-top:20px;display:flex;gap:10px;">
+        <button id="cancelFacebookModal" class="btn-generate" style="flex:1;background:var(--border-color);color:var(--text-primary);">Cancel</button>
+        <button id="signInFacebookBtn" class="btn-generate" style="flex:1;">Save & Sign In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- YouTube Connection Modal -->
+<div id="youtubeConnectModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header"><span>Connect YouTube Channel</span><button class="modal-close" id="closeYouTubeModal">&times;</button></div>
+    <div class="modal-body">
+      <div id="ytSavedProfilesSection" style="margin-bottom:20px;display:none;">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;font-weight:600;letter-spacing:0.5px;">SAVED ACCOUNTS</div>
+        <div id="ytProfileCards" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        <div style="margin:14px 0;border-top:1px solid var(--border-color);"></div>
+      </div>
+      <div class="control-row" style="margin-bottom:16px;"><div class="control-label">Client ID</div><input type="text" id="modalClientId" class="control-input" style="width:100%;" placeholder="Enter your YouTube Client ID" autocomplete="off"></div>
+      <div class="control-row" style="margin-bottom:16px;"><div class="control-label">Client Secret</div><input type="password" id="modalClientSecret" class="control-input" style="width:100%;" placeholder="Enter your YouTube Client Secret" autocomplete="off"></div>
+      <div class="control-row" style="margin-bottom:16px;"><div class="control-label">Save as</div><input type="text" id="modalProfileName" class="control-input" style="width:100%;" placeholder="Profile name (optional)" autocomplete="off"></div>
+      <div style="margin-top:20px;margin-bottom:20px;padding:15px;background:rgba(255,193,7,0.15);border-radius:8px;font-size:13px;color:var(--text-secondary);border-left:3px solid #ffc107;">
+        <strong style="color:#ffc107;">⚠️ Important: Add Redirect URI</strong>
+        <div style="margin-top:8px;padding:10px;background:rgba(0,0,0,0.3);border-radius:6px;font-family:monospace;font-size:12px;word-break:break-all;color:var(--accent);" id="redirectUriDisplay">http://localhost:3001/youtube/callback</div>
+        <button id="copyRedirectUri" style="margin-top:8px;padding:6px 12px;background:var(--accent);border:none;border-radius:4px;color:white;cursor:pointer;font-size:12px;">Copy Redirect URI</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-generate" id="cancelYouTubeModal" style="background:var(--border-color);">Cancel</button>
+      <button class="btn-generate" id="signInYouTubeBtn" style="background:var(--accent);">Sign In & Connect</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── HyperFrames widget ───────────────────────────────────────────────────────
+function mountHFWidget(containerId, sharedVideoInputId = null, hideVideoInput = false) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const p = containerId;
+  container.innerHTML = `
+    <div style="border-top:1px solid var(--border-color);padding-top:18px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer;"
+           onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.hf-chevron').textContent=this.nextElementSibling.style.display==='none'?'▶':'▼';">
+        <span class="panel-heading" style="margin:0;font-size:13px;">HYPERFRAMES CAPTIONS</span>
+        <span class="hf-chevron" style="color:var(--text-secondary);font-size:11px;">▶</span>
+      </div>
+      <div id="${p}_content" style="display:none;">
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;font-weight:600;color:var(--text-primary);flex:1;">Presets</span><button id="${p}_presetDeleteBtn" style="display:none;background:none;border:none;color:var(--error);cursor:pointer;font-size:13px;padding:2px 6px;">✕</button></div>
+          <div style="display:flex;gap:6px;margin-bottom:6px;"><select id="${p}_presetSelect" class="control-input" style="flex:1;padding:5px 8px;font-size:12px;"><option value="">— select a preset —</option></select><button id="${p}_presetLoadBtn" class="btn-generate" style="padding:5px 10px;font-size:12px;white-space:nowrap;">Load</button></div>
+          <div style="display:flex;gap:6px;"><input type="text" id="${p}_presetNameInput" class="control-input" placeholder="Preset name…" style="flex:1;padding:5px 8px;font-size:12px;"><button id="${p}_presetSaveBtn" class="btn-generate" style="padding:5px 10px;font-size:12px;white-space:nowrap;">Save</button></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);font-size:12px;"><input type="radio" name="${p}_tpl" value="single" id="${p}_tplSingle"> Single Box</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--card-bg);font-size:12px;"><input type="radio" name="${p}_tpl" value="kinetic" id="${p}_tplKinetic" checked> 3-Part Layout</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);font-size:12px;"><input type="radio" name="${p}_tpl" value="autoedit" id="${p}_tplAutoEdit"> 3part+1word</label>
+        </div>
+        <div style="display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;">
+          <div>
+            <div id="${p}_singleCtrl" style="display:none;margin-top:14px;padding:12px;background:var(--card-bg);border-radius:10px;">
+              <div style="display:grid;grid-template-columns:2fr 70px 50px 50px;gap:8px;align-items:end;">
+                <div><div class="control-label" style="margin-bottom:3px;">Font</div><select id="${p}_sFont" class="control-input" style="width:100%;"><option value="Fira Sans Ultra|fonts/Fire_Sans/fira-sans.ultra.ttf">Fira Sans Ultra</option><option value="Anton|fonts/Anton/Anton-Regular.ttf">Anton</option><option value="Impact|fonts/Impact/Impact.ttf">Impact</option><option value="Montserrat|fonts/Montserrat/Montserrat-VariableFont.ttf">Montserrat</option></select></div>
+                <div><div class="control-label" style="margin-bottom:3px;">Size</div><input type="number" id="${p}_sFontSize" value="52" min="10" max="200" class="control-input"></div>
+                <div><div class="control-label" style="margin-bottom:3px;">Text</div><input type="color" id="${p}_sTextColor" value="#ffffff" style="width:44px;height:30px;padding:1px;border:none;background:none;cursor:pointer;"></div>
+                <div><div class="control-label" style="margin-bottom:3px;">Box</div><input type="color" id="${p}_sBoxColor" value="#000000" style="width:44px;height:30px;padding:1px;border:none;background:none;cursor:pointer;"></div>
+              </div>
+              <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                <div><div class="control-label" style="margin-bottom:3px;">Radius</div><input type="number" id="${p}_sRadius" value="20" min="0" max="80" class="control-input"></div>
+                <div><div class="control-label" style="margin-bottom:3px;">Pad X</div><input type="number" id="${p}_sPadX" value="0" min="0" max="200" class="control-input"></div>
+                <div><div class="control-label" style="margin-bottom:3px;">Pad Y</div><input type="number" id="${p}_sPadY" value="0" min="0" max="200" class="control-input"></div>
+              </div>
+              <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;">
+                <div><div class="control-label" style="margin-bottom:3px;">Alignment</div>
+                  <div class="radio-input" style="justify-content:flex-start;gap:5px;">
+                    <label><input type="radio" name="${p}_sAlign" value="left"><span>Left</span></label>
+                    <label><input type="radio" name="${p}_sAlign" value="center" checked><span>Center</span></label>
+                    <label><input type="radio" name="${p}_sAlign" value="right"><span>Right</span></label>
+                    <span class="selection"></span>
+                  </div></div>
+                <div><div class="control-label" style="margin-bottom:3px;">Bottom Margin</div><input type="number" id="${p}_sBottomMargin" value="150" min="0" max="900" class="control-input"></div>
+              </div>
+              <div style="margin-top:10px;"><div class="control-label" style="margin-bottom:4px;">Caption SFX</div>
+                <select id="${p}_sfxType" class="control-input" style="width:100%;"><option value="">No Sound</option><option value="click">Click</option><option value="click_tap">Click Tap</option><option value="swoosh1">Swoosh 1</option><option value="swoosh2">Swoosh 2</option><option value="swoosh3">Swoosh 3</option></select>
+              </div>
+            </div>
+            <div id="${p}_kineticCtrl" style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">
+              <div class="card" style="border-left:3px solid var(--accent);">
+                <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">CONTEXT WORDS</div>
+                <div style="display:grid;grid-template-columns:2fr 50px;gap:8px;align-items:end;">
+                  <div><select id="${p}_kContextFont" class="control-input" style="width:100%;"><option value="Avalon Bold" selected>Avalon Bold</option><option value="Montserrat">Montserrat</option><option value="Anton">Anton</option><option value="Impact">Impact</option></select></div>
+                  <div><input type="color" id="${p}_kContextColor" value="#ffffff" style="width:44px;height:30px;padding:1px;border:none;background:none;cursor:pointer;"></div>
+                </div>
+              </div>
+              <div class="card" style="border-left:3px solid var(--accent);">
+                <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">EMPHASIS WORD</div>
+                <div style="display:grid;grid-template-columns:2fr 50px;gap:8px;align-items:end;">
+                  <div><select id="${p}_kEmphasisFont" class="control-input" style="width:100%;"><option value="League Gothic" selected>League Gothic</option><option value="Oswald">Oswald</option><option value="Montserrat">Montserrat</option><option value="Anton">Anton</option></select></div>
+                  <div><input type="color" id="${p}_kEmphasisColor" value="#FFD700" style="width:44px;height:30px;padding:1px;border:none;background:none;cursor:pointer;"></div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:16px;margin-top:6px;">
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="${p}_kShowBg"> Dark BG</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="${p}_kIcons"> Icons</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="${p}_kShadow"> Text Shadow</label>
+              </div>
+            </div>
+            <div id="${p}_autoEditCtrl" style="display:none;flex-direction:column;gap:8px;margin-top:14px;">
+              <div class="card" style="border-left:3px solid var(--accent);"><div style="font-size:12px;color:var(--text-secondary);">Fully automated edit — jump cuts, stacking opener, zoom events, SFX. No settings needed.</div></div>
+            </div>
+            <div id="${p}_sharedAnim" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div id="${p}_animCtrl"><div class="control-label" style="margin-bottom:4px;">Animation</div>
+                <div class="radio-input" style="flex-wrap:wrap;gap:4px;">
+                  <label><input type="radio" name="${p}_anim" value="bounce" checked><span>Bounce</span></label>
+                  <label><input type="radio" name="${p}_anim" value="fadein"><span>Fade In</span></label>
+                  <label><input type="radio" name="${p}_anim" value="none"><span>None</span></label>
+                  <span class="selection"></span>
+                </div></div>
+              <div>
+                <div><div class="control-label" style="margin-bottom:4px;">Max Words</div><input type="number" id="${p}_maxWords" value="6" min="1" max="20" class="control-input"></div>
+                <div style="margin-top:8px;"><div class="control-label" style="margin-bottom:4px;">Whisper Model</div>
+                  <div class="radio-input">
+                    <label><input type="radio" name="${p}_model" value="tiny.en" checked><span>Tiny</span></label>
+                    <label><input type="radio" name="${p}_model" value="base.en"><span>Base</span></label>
+                    <label><input type="radio" name="${p}_model" value="small.en"><span>Small</span></label>
+                    <span class="selection"></span>
+                  </div></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="control-label" style="margin-bottom:6px;font-size:10px;text-align:center;">PREVIEW</div>
+            <div id="${p}_prevWrap" style="position:relative;border-radius:10px;overflow:hidden;background:#111;min-height:120px;">
+              <canvas id="${p}_prevCanvas" style="width:100%;height:auto;display:block;"></canvas>
+              <div id="${p}_prevOverlay" style="position:absolute;inset:0;pointer-events:none;">
+                <div id="${p}_prevCapWrap" style="position:absolute;bottom:8%;left:0;right:0;text-align:center;">
+                  <div id="${p}_prevTop" style="color:#fff;text-transform:uppercase;line-height:1.2;transition:.15s;display:none;"></div>
+                  <div id="${p}_prevMid" style="display:inline-block;color:#FFD700;text-transform:uppercase;line-height:1.1;transition:.15s;">OVERLY</div>
+                  <div id="${p}_prevBot" style="color:#fff;text-transform:uppercase;line-height:1.2;transition:.15s;display:none;"></div>
+                </div>
+              </div>
+              <div id="${p}_prevPlaceholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:12px;pointer-events:none;">Upload video to preview</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const singleCtrl   = document.getElementById(`${p}_singleCtrl`);
+  const kineticCtrl  = document.getElementById(`${p}_kineticCtrl`);
+  const autoEditCtrl = document.getElementById(`${p}_autoEditCtrl`);
+  const sharedAnim   = document.getElementById(`${p}_sharedAnim`);
+  let _wFrameW = 1080, _wFrameH = 1920;
+
+  function applyTpl() {
+    const tpl = document.querySelector(`input[name="${p}_tpl"]:checked`).value;
+    singleCtrl.style.display   = tpl === 'single'   ? 'block' : 'none';
+    kineticCtrl.style.display  = tpl === 'kinetic'  ? 'flex'  : 'none';
+    autoEditCtrl.style.display = tpl === 'autoedit' ? 'flex'  : 'none';
+    sharedAnim.style.display   = tpl === 'autoedit' ? 'none'  : 'grid';
+    document.getElementById(`${p}_animCtrl`).style.display = (tpl === 'kinetic' || tpl === 'autoedit') ? 'none' : 'block';
+    updateWidgetPreview();
+  }
+  document.querySelectorAll(`input[name="${p}_tpl"]`).forEach(r => r.addEventListener('change', applyTpl));
+
+  function updateWidgetPreview() {
+    const tpl = document.querySelector(`input[name="${p}_tpl"]:checked`).value;
+    const pt = document.getElementById(`${p}_prevTop`), pm = document.getElementById(`${p}_prevMid`), pb = document.getElementById(`${p}_prevBot`);
+    const canvas = document.getElementById(`${p}_prevCanvas`);
+    const scale  = (canvas.offsetWidth || 200) / (_wFrameW || 1080);
+    if (tpl === 'kinetic') {
+      const ctxCol = document.getElementById(`${p}_kContextColor`).value, emphCol = document.getElementById(`${p}_kEmphasisColor`).value;
+      const ctxSz = Math.round(36*scale), emphSz = Math.round(72*scale);
+      document.getElementById(`${p}_prevCapWrap`).style.bottom = '8%';
+      pt.style.display='block'; pb.style.display='block'; pm.style.display='block';
+      pt.style.cssText+=`;color:${ctxCol};font-size:${ctxSz}px;font-weight:700;background:transparent;padding:0;`; pt.textContent='NEVER BE';
+      pm.style.cssText+=`;color:${emphCol};font-size:${emphSz}px;font-weight:900;background:transparent;padding:0;border-radius:0;max-width:'';`; pm.textContent='OVERLY';
+      pb.style.cssText+=`;color:${ctxCol};font-size:${ctxSz}px;font-weight:700;background:transparent;padding:0;`; pb.textContent='NICE';
+    } else {
+      pt.style.display='none'; pb.style.display='none'; pm.style.display='block';
+      pm.style.color='#FFD700'; pm.style.fontSize=Math.round(14*scale)+'px'; pm.style.background='transparent'; pm.style.padding='0'; pm.textContent='CAPTION';
+    }
+  }
+
+  // Presets
+  const HF_PRESETS_KEY = 'hf_captions_presets';
+  const wGetAll  = () => { try { return JSON.parse(localStorage.getItem(HF_PRESETS_KEY)||'{}'); } catch { return {}; } };
+  const wSaveAll = o => localStorage.setItem(HF_PRESETS_KEY, JSON.stringify(o));
+  function wRefreshSelect(val) {
+    const sel = document.getElementById(`${p}_presetSelect`), del = document.getElementById(`${p}_presetDeleteBtn`);
+    if (!sel) return;
+    const presets = wGetAll();
+    sel.innerHTML = '<option value="">— select a preset —</option>';
+    Object.keys(presets).sort().forEach(n => { const o = document.createElement('option'); o.value=o.textContent=n; sel.appendChild(o); });
+    if (val) sel.value = val;
+    if (del) del.style.display = sel.value ? 'inline-block' : 'none';
+  }
+  wRefreshSelect();
+  document.getElementById(`${p}_presetSelect`)?.addEventListener('change', () => {
+    const del = document.getElementById(`${p}_presetDeleteBtn`); if (del) del.style.display = document.getElementById(`${p}_presetSelect`).value ? 'inline-block' : 'none';
+  });
+  document.getElementById(`${p}_presetDeleteBtn`)?.addEventListener('click', () => {
+    const name = document.getElementById(`${p}_presetSelect`)?.value; if (!name||!confirm(`Delete preset "${name}"?`)) return;
+    const p2 = wGetAll(); delete p2[name]; wSaveAll(p2); wRefreshSelect();
+  });
+
+  [`${p}_kContextColor`,`${p}_kEmphasisColor`].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', updateWidgetPreview); });
+  applyTpl();
+}
+
+mountHFWidget('hfWidget_clipout');
+
+// ── Clipout Shorts JS ────────────────────────────────────────────────────────
+let clipoutVideoFile = null, clipoutCsvFile = null, clipoutAbortController = null, currentClipoutId = null, clipoutProgressInterval = null, clipoutReviewInterval = null;
+
+async function loadClipoutYouTubeChannels() {
+  const sel = document.getElementById('clipoutYoutubeChannelSelect'); if (!sel) return;
+  try {
+    const data = await fetch('/youtube/channels').then(r=>r.json());
+    sel.innerHTML = '<option value="" disabled>Select one or more YouTube Channels (Hold Ctrl/Cmd to select multiple)</option>';
+    (data.channels||[]).forEach(ch => { const o=document.createElement('option'); o.value=ch.channelId; o.textContent=`${ch.channelTitle} (Connected: ${new Date(ch.connectedAt).toLocaleDateString()})`; sel.appendChild(o); });
+  } catch {}
+}
+async function loadClipoutInstagramAccounts() {
+  const sel = document.getElementById('clipoutInstagramAccountSelect'); if (!sel) return;
+  try {
+    const data = await fetch('/instagram/accounts').then(r=>r.json());
+    sel.innerHTML = '<option value="">Select Instagram Account (Optional)</option>';
+    (data.accounts||[]).forEach(a => { const o=document.createElement('option'); o.value=a.accountId; o.textContent=`@${a.username} (Page: ${a.pageName})`; sel.appendChild(o); });
+  } catch {}
+}
+async function loadClipoutFacebookPages() {
+  const sel = document.getElementById('clipoutFacebookPageSelect'); if (!sel) return;
+  try {
+    const data = await fetch('/facebook/pages').then(r=>r.json());
+    sel.innerHTML = '<option value="">Select Facebook Page (Optional)</option>';
+    (data.pages||[]).forEach(p => { const o=document.createElement('option'); o.value=p.pageId; o.textContent=`${p.pageName}${p.hasInstagram?` (IG: @${p.instagramUsername})`:''}`; sel.appendChild(o); });
+  } catch {}
+}
+
+loadClipoutYouTubeChannels(); loadClipoutInstagramAccounts(); loadClipoutFacebookPages();
+
+document.getElementById('clipoutVideoInput')?.addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  clipoutVideoFile = f;
+  const d = document.getElementById('clipoutVideoNameDisplay'); d.textContent=`Selected: ${f.name}`; d.style.color='var(--success)';
+});
+
+document.getElementById('clipout_use_video_path_from_csv')?.addEventListener('change', e => {
+  const inp = document.getElementById('clipoutVideoInput'); if (inp) inp.disabled = e.target.checked;
+  if (e.target.checked) { clipoutVideoFile=null; const d=document.getElementById('clipoutVideoNameDisplay'); if(d){d.textContent='Using per-row video paths from CSV';d.style.color='var(--text-secondary)';} }
+  else { const d=document.getElementById('clipoutVideoNameDisplay'); if(d){d.textContent='';} }
+});
+
+document.getElementById('clipoutCsvFileInput')?.addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  if (!f.name.match(/\.(csv|xlsx|xls)$/i)) { alert('Please upload a CSV or Excel file.'); clipoutCsvFile=null; document.getElementById('clipoutCsvFileNameDisplay').textContent=''; return; }
+  clipoutCsvFile = f;
+  const d = document.getElementById('clipoutCsvFileNameDisplay'); d.textContent=`Selected: ${f.name}`; d.style.color='var(--success)';
+});
+
+// Style 2 background visibility
+const clipoutStyleSelect = document.getElementById('clipout_style');
+function updateStyle2Vis() {
+  const opts = document.getElementById('clipout_style2_options');
+  if (opts) opts.style.display = clipoutStyleSelect?.value==='2' ? 'block' : 'none';
+}
+clipoutStyleSelect?.addEventListener('change', updateStyle2Vis); updateStyle2Vis();
+
+// Backgrounds list
+const clipoutBgSelect = document.getElementById('clipout_picture_background');
+const clipoutBgHint = document.getElementById('clipoutBackgroundsHint');
+let clipoutBgLastKey = '';
+async function refreshClipoutBackgrounds() {
+  if (!clipoutBgSelect) return;
+  try {
+    const data = await fetch('/clipout/backgrounds').then(r=>r.json());
+    const files = data.files||[], key = files.join('|');
+    if (key === clipoutBgLastKey) return;
+    clipoutBgLastKey = key;
+    const cur = clipoutBgSelect.value;
+    clipoutBgSelect.innerHTML = '<option value="">Random (from pictures folder)</option>';
+    files.forEach(n => { const o=document.createElement('option'); o.value=o.textContent=n; clipoutBgSelect.appendChild(o); });
+    if (cur && files.includes(cur)) clipoutBgSelect.value = cur;
+    if (clipoutBgHint) clipoutBgHint.textContent = `${files.length} file(s) found`;
+  } catch {}
+}
+document.getElementById('clipoutRefreshBackgrounds')?.addEventListener('click', refreshClipoutBackgrounds);
+refreshClipoutBackgrounds(); setInterval(refreshClipoutBackgrounds, 15000);
+
+// Toggle panels
+['clipout_enable_auto_edit','clipout_enable_subtitles','clipout_enable_hf'].forEach(id => {
+  const el = document.getElementById(id); if (!el) return;
+  const targetMap = { clipout_enable_auto_edit:'clipout_auto_edit_settings', clipout_enable_subtitles:'clipout_subtitle_settings', clipout_enable_hf:'clipout_hf_settings' };
+  el.addEventListener('change', () => { const t=document.getElementById(targetMap[id]); if(t) t.style.display=el.checked?'block':'none'; });
+});
+document.getElementById('clipout_enable_browser_post')?.addEventListener('change', function() {
+  const o=document.getElementById('clipout_browser_post_options'); if(o) o.style.display=this.checked?'block':'none';
+});
+document.getElementById('clipout_enable_youtube_browser')?.addEventListener('change', function() {
+  const o=document.getElementById('clipout_youtube_browser_options'); if(o) o.style.display=this.checked?'block':'none';
+});
+document.getElementById('clipoutConnectFacebookBtn')?.addEventListener('click', () => openFacebookModal());
+
+// Progress update
+async function updateClipoutProgress(clipoutId) {
+  const startBtn=document.getElementById('startClipoutBtn'), stopBtn=document.getElementById('stopClipoutBtn');
+  const statusDiv=document.getElementById('clipoutStatus'), statusText=document.getElementById('clipoutStatusText');
+  const progressText=document.getElementById('clipoutProgressText'), progressBar=document.getElementById('clipoutProgressBar');
+  try {
+    const resp = await fetch(`/clipout-progress/${clipoutId}`);
+    if (!resp.ok) {
+      if (resp.status===404) { clearInterval(clipoutProgressInterval); clipoutProgressInterval=null; statusText.textContent='Processing completed'; statusText.style.color='var(--success)'; startBtn.style.display='block'; stopBtn.style.display='none'; currentClipoutId=null; }
+      return;
+    }
+    const data = await resp.json();
+    if (data.total>0) { progressBar.style.width=`${Math.min((data.completed/data.total)*100,100)}%`; progressText.textContent=`${data.completed}/${data.total}`; }
+    if (data.status==='stopped') { statusText.textContent='Processing stopped'; statusText.style.color='var(--text-secondary)'; clearInterval(clipoutProgressInterval); clipoutProgressInterval=null; startBtn.style.display='block'; stopBtn.style.display='none'; currentClipoutId=null; }
+    else if (data.status==='completed') {
+      statusText.textContent = data.result ? `✅ Done! ${data.result.successful||0} clips, ${data.result.failed||0} failed` : '✅ Processing completed';
+      statusText.style.color='var(--success)'; clearInterval(clipoutProgressInterval); clipoutProgressInterval=null; startBtn.style.display='block'; stopBtn.style.display='none'; currentClipoutId=null;
+    }
+    else if (data.status==='failed') { statusText.textContent=`❌ ${data.error||'Unknown error'}`; statusText.style.color='var(--error)'; clearInterval(clipoutProgressInterval); clipoutProgressInterval=null; startBtn.style.display='block'; stopBtn.style.display='none'; currentClipoutId=null; }
+    else if (data.status==='running') { statusText.textContent=`Processing… (${data.completed}/${data.total})`; statusText.style.color='var(--text-primary)'; }
+  } catch {}
+}
+
+// Review polling
+const clipoutReviewBox=document.getElementById('clipoutReviewBox'), clipoutReviewVideo=document.getElementById('clipoutReviewVideo');
+const clipoutReviewMeta=document.getElementById('clipoutReviewMeta'), clipoutReviewStatus=document.getElementById('clipoutReviewStatus');
+const clipoutApproveBtn=document.getElementById('clipoutApproveBtn'), clipoutSkipBtn=document.getElementById('clipoutSkipBtn');
+let clipoutCurrentVideoUrl=null;
+
+async function fetchClipoutReviewCurrent() { if (!currentClipoutId) return null; try { const r=await fetch(`/clipout-review/${currentClipoutId}/current`); return r.ok?await r.json():null; } catch { return null; } }
+async function submitClipoutReviewDecision(decision) {
+  if (!currentClipoutId) return;
+  const cur = await fetchClipoutReviewCurrent();
+  if (!cur?.waiting) return;
+  clipoutReviewStatus.textContent = decision==='approve'?'Uploading…':'Skipping…';
+  clipoutApproveBtn.disabled=true; clipoutSkipBtn.disabled=true;
+  await fetch(`/clipout-review/${currentClipoutId}/decision`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({index:cur.index,decision}) });
+}
+function startClipoutReviewPolling() {
+  if (clipoutReviewInterval) return;
+  clipoutReviewInterval = setInterval(async () => {
+    try {
+      const data = await fetchClipoutReviewCurrent();
+      if (!data) return;
+      if (data.waiting) {
+        if (clipoutReviewBox) clipoutReviewBox.style.display='block';
+        if (clipoutReviewMeta) clipoutReviewMeta.textContent=`Clip ${data.index+1}/${data.total}: ${data.title||''}`;
+        if (clipoutReviewVideo && data.videoUrl && data.videoUrl!==clipoutCurrentVideoUrl) { clipoutCurrentVideoUrl=data.videoUrl; clipoutReviewVideo.src=data.videoUrl; clipoutReviewVideo.play().catch(()=>{}); }
+        clipoutApproveBtn.disabled=false; clipoutSkipBtn.disabled=false; clipoutReviewStatus.textContent='Approve to upload, or skip.';
+      } else { if (clipoutReviewBox) clipoutReviewBox.style.display='none'; }
+    } catch {}
+  }, 1000);
+}
+clipoutApproveBtn?.addEventListener('click', () => submitClipoutReviewDecision('approve'));
+clipoutSkipBtn?.addEventListener('click',    () => submitClipoutReviewDecision('skip'));
+
+// Start
+document.getElementById('startClipoutBtn')?.addEventListener('click', async () => {
+  const useVideoPathFromCsv = document.getElementById('clipout_use_video_path_from_csv')?.checked;
+  if (!useVideoPathFromCsv && !clipoutVideoFile) { alert('Please upload a source video file first (or enable "Use video path from CSV")'); return; }
+  if (!clipoutCsvFile) { alert('Please upload a CSV/Excel file first'); return; }
+
+  const youtubeChannels = Array.from(document.getElementById('clipoutYoutubeChannelSelect').selectedOptions).map(o=>o.value).filter(Boolean);
+  const instagramAccount = document.getElementById('clipoutInstagramAccountSelect')?.value||'';
+  const facebookPage = document.getElementById('clipoutFacebookPageSelect')?.value||'';
+  const usePlatformsFromCsv = document.getElementById('clipout_use_platforms_from_csv')?.checked;
+  const browserPostEnabled  = document.getElementById('clipout_enable_browser_post')?.checked;
+  const ytBrowserEnabled    = document.getElementById('clipout_enable_youtube_browser')?.checked;
+
+  if (!usePlatformsFromCsv && !youtubeChannels.length && !instagramAccount && !facebookPage && !browserPostEnabled && !ytBrowserEnabled) {
+    alert('Please select at least one platform.'); return;
+  }
+
+  const watermarkEnabled = document.getElementById('clipout_enable_watermark')?.checked;
+  const useWatermarkTextFromCsv = document.getElementById('clipout_use_watermark_text_from_csv')?.checked;
+  const watermarkText = document.getElementById('clipout_watermark_text')?.value||'';
+  if (watermarkEnabled && !useWatermarkTextFromCsv && !watermarkText.trim()) { alert('Watermark is enabled but no text is set.'); return; }
+
+  const formData = new FormData();
+  formData.append('use_video_path_from_csv', useVideoPathFromCsv?'true':'false');
+  formData.append('style', document.getElementById('clipout_style').value||'1');
+  formData.append('picture_folder', 'pictures');
+  const bg = document.getElementById('clipout_picture_background')?.value||''; if (bg) formData.append('picture_background', bg);
+
+  const autoEditEnabled = document.getElementById('clipout_enable_auto_edit')?.checked;
+  formData.append('enable_auto_edit', autoEditEnabled?'on':'off');
+  if (autoEditEnabled) {
+    formData.append('enable_autocut', document.getElementById('clipout_enable_autocut').checked?'on':'off');
+    formData.append('gap_threshold', document.getElementById('clipout_gap_threshold').value||'0.5');
+    formData.append('transition_style', document.getElementById('clipout_transition_style').value||'');
+    formData.append('transition_sfx', document.getElementById('clipout_transition_sfx').value||'');
+    formData.append('loudnorm', document.getElementById('clipout_loudnorm').checked?'on':'off');
+    formData.append('zoom_pattern', document.getElementById('clipout_zoom_pattern').value||'');
+    formData.append('zoom_percent', document.getElementById('clipout_zoom_percent').value||'10');
+  }
+
+  const subtitlesEnabled = document.getElementById('clipout_enable_subtitles')?.checked;
+  formData.append('enable_subtitles', subtitlesEnabled?'on':'off');
+  if (subtitlesEnabled) {
+    ['max_words','model_name','font_name','font_size','alignment','margin_v','outline','shadow','color_r','color_g','color_b'].forEach(k => {
+      const el = document.getElementById(`clipout_${k}`); if (el) formData.append(k, el.value||'');
+    });
+  }
+
+  const hfEnabled = document.getElementById('clipout_enable_hf')?.checked;
+  formData.append('enable_hf', hfEnabled?'true':'false');
+  if (hfEnabled) {
+    const hp = 'hfWidget_clipout';
+    const hfTpl   = document.querySelector(`input[name="${hp}_tpl"]:checked`)?.value  ||'kinetic';
+    const hfModel = document.querySelector(`input[name="${hp}_model"]:checked`)?.value||'base.en';
+    const hfAnim  = document.querySelector(`input[name="${hp}_anim"]:checked`)?.value ||'bounce';
+    formData.append('hf_max_words', document.getElementById(`${hp}_maxWords`)?.value||'6');
+    formData.append('hf_model_name', hfModel); formData.append('hf_template', hfTpl); formData.append('hf_animation', hfAnim); formData.append('hf_box_opacity','0');
+    if (hfTpl==='single') {
+      const sp=(document.getElementById(`${hp}_sFont`)?.value||'').split('|');
+      formData.append('hf_font_name',sp[0]||''); formData.append('hf_font_file',sp[1]||'');
+      formData.append('hf_font_size',document.getElementById(`${hp}_sFontSize`)?.value||'52');
+      formData.append('hf_text_color',document.getElementById(`${hp}_sTextColor`)?.value||'#ffffff');
+      formData.append('hf_box_color',document.getElementById(`${hp}_sBoxColor`)?.value||'#000000');
+      formData.append('hf_border_radius',document.getElementById(`${hp}_sRadius`)?.value||'20');
+      formData.append('hf_pad_x',document.getElementById(`${hp}_sPadX`)?.value||'0');
+      formData.append('hf_pad_y',document.getElementById(`${hp}_sPadY`)?.value||'0');
+      formData.append('hf_align',document.querySelector(`input[name="${hp}_sAlign"]:checked`)?.value||'center');
+      formData.append('hf_bottom_margin',document.getElementById(`${hp}_sBottomMargin`)?.value||'150');
+      formData.append('hf_sfx','0');
+      formData.append('hf_sfx_type',document.getElementById(`${hp}_sfxType`)?.value||'click');
+    } else if (hfTpl==='kinetic') {
+      formData.append('hf_kinetic_context_font',document.getElementById(`${hp}_kContextFont`)?.value||'');
+      formData.append('hf_kinetic_context_color',document.getElementById(`${hp}_kContextColor`)?.value||'#ffffff');
+      formData.append('hf_kinetic_emphasis_font',document.getElementById(`${hp}_kEmphasisFont`)?.value||'');
+      formData.append('hf_kinetic_emphasis_color',document.getElementById(`${hp}_kEmphasisColor`)?.value||'#FFD700');
+      formData.append('hf_show_bg',document.getElementById(`${hp}_kShowBg`)?.checked?'1':'0');
+      formData.append('hf_enable_icons',document.getElementById(`${hp}_kIcons`)?.checked?'1':'0');
+      formData.append('hf_show_shadow',document.getElementById(`${hp}_kShadow`)?.checked?'1':'0');
+    }
+  }
+
+  formData.append('use_platforms_from_csv', usePlatformsFromCsv?'true':'false');
+  formData.append('use_watermark_text_from_csv', useWatermarkTextFromCsv?'true':'false');
+  if (watermarkEnabled) {
+    formData.append('enable_watermark','on');
+    formData.append('watermark_text',watermarkText.trim());
+    formData.append('watermark_position',document.getElementById('clipout_watermark_position')?.value||'bottom-right');
+    formData.append('watermark_font','fire-sans');
+    formData.append('watermark_size',document.getElementById('clipout_watermark_size')?.value||'medium');
+    formData.append('watermark_box',document.getElementById('clipout_watermark_box')?.checked?'on':'off');
+    formData.append('watermark_opacity',document.getElementById('clipout_watermark_opacity')?.value||'70');
+  }
+  formData.append('review_before_upload', document.getElementById('clipout_review_before_upload')?.checked?'true':'false');
+  youtubeChannels.forEach(ch => formData.append('youtube_channel', ch));
+  if (instagramAccount) formData.append('instagram_account', instagramAccount);
+  if (facebookPage) formData.append('facebook_page', facebookPage);
+  if (browserPostEnabled) formData.append('browser_post_account', document.querySelector('input[name="clipout_browser_post_account"]:checked')?.value||'wise_reel');
+  if (ytBrowserEnabled)   formData.append('youtube_browser_account', document.querySelector('input[name="clipout_youtube_browser_account"]:checked')?.value||'beahead_yt');
+  if (clipoutVideoFile) formData.append('video', clipoutVideoFile);
+  formData.append('csv', clipoutCsvFile);
+
+  const startBtn=document.getElementById('startClipoutBtn'), stopBtn=document.getElementById('stopClipoutBtn');
+  const statusDiv=document.getElementById('clipoutStatus'), statusText=document.getElementById('clipoutStatusText');
+  const progressBar=document.getElementById('clipoutProgressBar'), progressText=document.getElementById('clipoutProgressText');
+  startBtn.style.display='none'; stopBtn.style.display='block';
+  statusDiv.style.display='block'; statusText.textContent='Starting…'; statusText.style.color='var(--text-primary)';
+  progressBar.style.width='0%'; progressText.textContent='0/0';
+  clipoutAbortController = new AbortController();
+
+  try {
+    const resp = await fetch('/start-clipout-shorts', { method:'POST', body:formData, signal:clipoutAbortController.signal });
+    if (!resp.ok) { const err=await resp.json(); throw new Error(err.error||'Processing failed'); }
+    const result = await resp.json();
+    if (result.success && result.clipoutId) {
+      currentClipoutId = result.clipoutId;
+      statusText.textContent = 'Processing…';
+      clipoutProgressInterval = setInterval(() => { if (currentClipoutId) updateClipoutProgress(currentClipoutId); }, 1000);
+      if (document.getElementById('clipout_review_before_upload')?.checked) startClipoutReviewPolling();
+    } else { throw new Error(result.message||'Failed to start'); }
+  } catch (e) {
+    statusText.textContent = e.name==='AbortError' ? 'Processing stopped' : `❌ Error: ${e.message}`;
+    statusText.style.color = e.name==='AbortError' ? 'var(--text-secondary)' : 'var(--error)';
+    startBtn.style.display='block'; stopBtn.style.display='none';
+  }
+});
+
+// Stop
+document.getElementById('stopClipoutBtn')?.addEventListener('click', async () => {
+  clipoutAbortController?.abort();
+  if (currentClipoutId) try { await fetch(`/stop-clipout-shorts/${currentClipoutId}`,{method:'POST'}); } catch {}
+  clearInterval(clipoutProgressInterval); clipoutProgressInterval=null;
+  clearInterval(clipoutReviewInterval);   clipoutReviewInterval=null;
+  document.getElementById('startClipoutBtn').style.display='block';
+  document.getElementById('stopClipoutBtn').style.display='none';
+  currentClipoutId=null;
+});
+
+// ── YouTube Modal ────────────────────────────────────────────────────────────
+const youtubeConnectModal = document.getElementById('youtubeConnectModal');
+const modalClientId = document.getElementById('modalClientId'), modalClientSecret = document.getElementById('modalClientSecret'), modalProfileName = document.getElementById('modalProfileName');
+
+async function renderYouTubeProfiles() {
+  const section=document.getElementById('ytSavedProfilesSection'), container=document.getElementById('ytProfileCards'); if (!section||!container) return;
+  try {
+    const data = await fetch('/youtube/saved-profiles').then(r=>r.json());
+    if (!data.profiles?.length) { section.style.display='none'; return; }
+    section.style.display='block'; container.innerHTML='';
+    data.profiles.forEach(p => {
+      const card = document.createElement('div');
+      card.style.cssText='display:flex;align-items:center;gap:6px;padding:7px 12px;background:rgba(99,102,241,0.12);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;font-size:13px;';
+      card.innerHTML=`<span style="font-weight:600;">${p.name}</span><span style="color:var(--text-secondary);font-size:11px;">${p.clientId.slice(0,20)}…</span><button data-name="${p.name}" style="margin-left:4px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;">✕</button>`;
+      card.addEventListener('click', e => { if(e.target.tagName==='BUTTON') return; if(modalClientId) modalClientId.value=p.clientId; if(modalClientSecret) modalClientSecret.value=p.clientSecret; if(modalProfileName) modalProfileName.value=p.name; });
+      card.querySelector('button').addEventListener('click', async e => { e.stopPropagation(); if(!confirm(`Delete profile "${p.name}"?`)) return; await fetch(`/youtube/saved-profile/${encodeURIComponent(p.name)}`,{method:'DELETE'}); renderYouTubeProfiles(); });
+      container.appendChild(card);
+    });
+  } catch { section.style.display='none'; }
+}
+
+function openYouTubeModal() { if (!youtubeConnectModal) return; if(modalClientId) modalClientId.value=''; if(modalClientSecret) modalClientSecret.value=''; if(modalProfileName) modalProfileName.value=''; youtubeConnectModal.classList.add('show'); renderYouTubeProfiles(); }
+function closeYouTubeModalFunc() { if (!youtubeConnectModal) return; youtubeConnectModal.classList.remove('show'); if(modalClientId) modalClientId.value=''; if(modalClientSecret) modalClientSecret.value=''; if(modalProfileName) modalProfileName.value=''; }
+
+document.getElementById('closeYouTubeModal')?.addEventListener('click', closeYouTubeModalFunc);
+document.getElementById('cancelYouTubeModal')?.addEventListener('click', closeYouTubeModalFunc);
+youtubeConnectModal?.addEventListener('click', e => { if(e.target===youtubeConnectModal) closeYouTubeModalFunc(); });
+document.getElementById('copyRedirectUri')?.addEventListener('click', () => { navigator.clipboard.writeText('http://localhost:3001/youtube/callback').then(()=>{ const b=document.getElementById('copyRedirectUri'); const orig=b.textContent; b.textContent='✅ Copied!'; setTimeout(()=>b.textContent=orig,2000); }); });
+
+async function startYouTubeOAuth() {
+  const clientId=modalClientId?.value.trim(), clientSecret=modalClientSecret?.value.trim(), profileName=modalProfileName?.value.trim();
+  if (!clientId||!clientSecret) { alert('Please enter both Client ID and Client Secret'); return; }
+  if (profileName) await fetch('/youtube/save-profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:profileName,clientId,clientSecret})}).catch(()=>{});
+  const resp = await fetch('/youtube/save-credentials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId,clientSecret})});
+  if (!resp.ok) { const e=await resp.json(); alert('Error: '+(e.error||'Failed')); return; }
+  closeYouTubeModalFunc();
+  const w=600,h=700,l=(screen.width-w)/2,t=(screen.height-h)/2;
+  const popup=window.open('/youtube/auth','YouTube OAuth',`width=${w},height=${h},left=${l},top=${t},toolbar=no`);
+  if (!popup) { alert('⚠️ Popup blocked. Please allow popups.'); return; }
+  const handler = async e => {
+    if (e.data.type==='youtube_connected') { await loadClipoutYouTubeChannels(); window.removeEventListener('message',handler); if(!popup.closed) popup.close(); }
+    else if (e.data.type==='youtube_auth_error') { alert('❌ '+e.data.message); window.removeEventListener('message',handler); if(!popup.closed) popup.close(); }
+  };
+  window.addEventListener('message',handler);
+  const check=setInterval(()=>{ if(popup.closed){ clearInterval(check); window.removeEventListener('message',handler); } },500);
+}
+document.getElementById('signInYouTubeBtn')?.addEventListener('click', startYouTubeOAuth);
+document.getElementById('clipoutConnectYouTubeBtn')?.addEventListener('click', openYouTubeModal);
+
+// ── Facebook Modal ───────────────────────────────────────────────────────────
+const facebookConnectModal = document.getElementById('facebookConnectModal');
+const modalAppId = document.getElementById('modalAppId'), modalAppSecret = document.getElementById('modalAppSecret');
+
+function openFacebookModal()  { if (!facebookConnectModal) return; if(modalAppId) modalAppId.value=''; if(modalAppSecret) modalAppSecret.value=''; facebookConnectModal.classList.add('show'); }
+function closeFacebookModalFunc() { if (!facebookConnectModal) return; facebookConnectModal.classList.remove('show'); if(modalAppId) modalAppId.value=''; if(modalAppSecret) modalAppSecret.value=''; }
+
+document.getElementById('closeFacebookModal')?.addEventListener('click', closeFacebookModalFunc);
+document.getElementById('cancelFacebookModal')?.addEventListener('click', closeFacebookModalFunc);
+facebookConnectModal?.addEventListener('click', e => { if(e.target===facebookConnectModal) closeFacebookModalFunc(); });
+document.getElementById('copyFacebookRedirectUri')?.addEventListener('click', () => { navigator.clipboard.writeText('http://localhost:3001/facebook/callback').then(()=>{ const b=document.getElementById('copyFacebookRedirectUri'); const orig=b.textContent; b.textContent='✅ Copied!'; setTimeout(()=>b.textContent=orig,2000); }); });
+
+async function startFacebookOAuth() {
+  const appId=modalAppId?.value.trim(), appSecret=modalAppSecret?.value.trim();
+  if (!appId||!appSecret) { alert('Please enter both App ID and App Secret'); return; }
+  const resp = await fetch('/facebook/save-credentials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({appId,appSecret})});
+  if (!resp.ok) { const e=await resp.json(); alert('❌ Error: '+(e.error||'Failed')); return; }
+  closeFacebookModalFunc();
+  const w=600,h=700,l=(screen.width-w)/2,t=(screen.height-h)/2;
+  const popup=window.open('/facebook/auth','Facebook OAuth',`width=${w},height=${h},left=${l},top=${t},toolbar=no`);
+  if (!popup) { alert('⚠️ Popup blocked. Please allow popups.'); return; }
+  const handler = async e => {
+    if (e.data.type==='facebook_connected') { await loadClipoutInstagramAccounts(); await loadClipoutFacebookPages(); window.removeEventListener('message',handler); if(!popup.closed) popup.close(); }
+    else if (e.data.type==='facebook_auth_error') { alert('❌ '+e.data.message); window.removeEventListener('message',handler); if(!popup.closed) popup.close(); }
+  };
+  window.addEventListener('message',handler);
+  const check=setInterval(()=>{ if(popup.closed){ clearInterval(check); window.removeEventListener('message',handler); } },500);
+}
+document.getElementById('signInFacebookBtn')?.addEventListener('click', startFacebookOAuth);
+</script>
+</body>
+</html>
