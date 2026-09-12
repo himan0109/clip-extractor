@@ -385,6 +385,36 @@
         <div id="ytDlStatusBadge" style="display:none;margin-top:20px;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;text-align:center;"></div>
       </div>
     </div>
+    <div style="margin:32px 0;display:flex;align-items:center;gap:12px;">
+      <div style="flex:1;height:1px;background:var(--border-color);"></div>
+      <span style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-secondary);white-space:nowrap;">or download instagram reel</span>
+      <div style="flex:1;height:1px;background:var(--border-color);"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+      <div>
+        <div class="panel-heading">DOWNLOAD INSTAGRAM REEL</div>
+        <div class="control-row" style="margin-top:20px;">
+          <div class="control-label">Instagram Reel URL</div>
+          <input type="text" id="igReelUrl" placeholder="https://www.instagram.com/reel/..." class="control-input" style="width:100%;">
+        </div>
+        <button id="igReelStartBtn" class="btn-generate" style="margin-top:20px;width:100%;background:linear-gradient(135deg,#e1306c,#833ab4);">⬇ Download Reel</button>
+        <div id="igReelLogContainer" style="display:none;margin-top:20px;">
+          <div id="igReelLog" style="background:#0d1117;border:1px solid var(--border-color);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;color:#8b949e;height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;"></div>
+        </div>
+        <div id="igReelFileContainer" style="display:none;margin-top:16px;">
+          <a id="igReelFileLink" href="#" class="btn-generate" style="display:block;text-align:center;text-decoration:none;background:linear-gradient(135deg,#e1306c,#833ab4);">⬇ Download Reel File</a>
+        </div>
+      </div>
+      <div>
+        <div class="panel-heading">NOTE</div>
+        <div style="margin-top:20px;padding:15px;background:var(--card-bg);border-radius:8px;font-size:13px;color:var(--text-secondary);">
+          Downloads public Instagram Reels using <strong>yt-dlp</strong>. Paste any public reel or post URL.<br><br>
+          <strong style="color:var(--text-primary);">Tip:</strong> File stays on server for 1 hour. Private accounts require cookies — not supported here.
+        </div>
+        <div id="igReelStatusBadge" style="display:none;margin-top:20px;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:600;text-align:center;"></div>
+      </div>
+    </div>
   </div><!-- end tab-youtube-tools -->
 
 </div><!-- end page-wrap -->
@@ -1147,6 +1177,78 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       setStatus('❌ ' + err.message, '#ef4444');
       appendLog('Error: ' + err.message);
       startBtn.disabled = false; startBtn.textContent = '⬇ Download Video';
+    }
+  });
+})();
+
+// ── Instagram Reel Download ────────────────────────────────────────────────
+(function initIgReel() {
+  const startBtn      = document.getElementById('igReelStartBtn');
+  const urlInput      = document.getElementById('igReelUrl');
+  const logContainer  = document.getElementById('igReelLogContainer');
+  const logEl         = document.getElementById('igReelLog');
+  const fileContainer = document.getElementById('igReelFileContainer');
+  const fileLink      = document.getElementById('igReelFileLink');
+  const statusBadge   = document.getElementById('igReelStatusBadge');
+  let activeJobId     = null;
+  let pollTimer       = null;
+
+  function setStatus(msg, color) {
+    if (!statusBadge) return;
+    statusBadge.style.display    = 'block';
+    statusBadge.style.background = color + '22';
+    statusBadge.style.color      = color;
+    statusBadge.style.border     = '1px solid ' + color + '44';
+    statusBadge.textContent      = msg;
+  }
+
+  function startPolling(jobId) {
+    pollTimer = setInterval(async () => {
+      try {
+        const r   = await fetch('/instagram-reel-progress/' + jobId);
+        const job = await r.json();
+        if (job.logs?.length) { logEl.textContent = job.logs.join('\n') + '\n'; logEl.scrollTop = logEl.scrollHeight; }
+        if (job.status === 'completed') {
+          clearInterval(pollTimer);
+          startBtn.disabled = false; startBtn.textContent = '⬇ Download Reel';
+          if (fileContainer) fileContainer.style.display = 'block';
+          if (fileLink) { fileLink.href = `/instagram-reel-file/${jobId}`; fileLink.setAttribute('download', job.filename || 'reel.mp4'); }
+          setStatus('✅ File ready', '#22c55e');
+        } else if (job.status === 'failed') {
+          clearInterval(pollTimer);
+          startBtn.disabled = false; startBtn.textContent = '⬇ Download Reel';
+          setStatus('❌ ' + (job.error || 'Failed'), '#ef4444');
+        }
+      } catch (e) { clearInterval(pollTimer); setStatus('❌ Poll error: ' + e.message, '#ef4444'); }
+    }, 2000);
+  }
+
+  startBtn?.addEventListener('click', async () => {
+    const url = urlInput?.value.trim();
+    if (!url) { alert('Please enter an Instagram Reel URL'); return; }
+
+    startBtn.disabled = true; startBtn.textContent = '⏳ Downloading…';
+    if (logContainer) logContainer.style.display = 'block';
+    if (logEl) logEl.textContent = '';
+    if (fileContainer) fileContainer.style.display = 'none';
+    setStatus('Downloading…', '#833ab4');
+
+    try {
+      const res  = await fetch('/instagram-download-reel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      let data;
+      try { data = await res.json(); } catch { throw new Error('Server error (HTTP ' + res.status + ') — try restarting the server'); }
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      activeJobId = data.jobId;
+      logEl.textContent = 'Job ID: ' + activeJobId + '\n';
+      startPolling(activeJobId);
+    } catch (err) {
+      setStatus('❌ ' + err.message, '#ef4444');
+      if (logEl) logEl.textContent = 'Error: ' + err.message + '\n';
+      startBtn.disabled = false; startBtn.textContent = '⬇ Download Reel';
     }
   });
 })();

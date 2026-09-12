@@ -735,6 +735,96 @@ app.get('/youtube-download-file/:jobId', (req, res) => {
   });
 });
 
+// ── Instagram Reel Download ──────────────────────────────────────────────────
+
+const activeIgReelJobs = new Map();
+
+app.post('/instagram-download-reel', (req, res) => {
+  const { url } = req.body;
+  if (!url || !url.trim()) return res.status(400).json({ error: 'url is required' });
+
+  const jobId  = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const jobDir = path.join(__dirname, 'output', `igreel_${jobId}`);
+  fs.mkdirSync(jobDir, { recursive: true });
+
+  const jobInfo = { status: 'downloading', logs: [], filePath: null, filename: null, error: null };
+  activeIgReelJobs.set(jobId, jobInfo);
+  setTimeout(() => activeIgReelJobs.delete(jobId), 2 * 60 * 60 * 1000);
+
+  res.json({ jobId });
+
+  const outTemplate = path.join(jobDir, '%(title)s.%(ext)s');
+  const ytdlp = spawn('yt-dlp', [
+    '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+    '--merge-output-format', 'mp4',
+    '-o', outTemplate,
+    '--no-playlist',
+    '--no-mtime',
+    '--restrict-filenames',
+    url.trim()
+  ]);
+
+  let resolvedPath = null;
+
+  ytdlp.stdout.on('data', (data) => {
+    data.toString().split('\n').forEach(line => {
+      const l = line.trim();
+      if (!l) return;
+      jobInfo.logs.push(l);
+      const mergeMatch = l.match(/Merging formats into "(.+?)"/);
+      if (mergeMatch) resolvedPath = mergeMatch[1];
+      const destMatch  = l.match(/\[download\] Destination: (.+)$/);
+      if (destMatch)   resolvedPath = destMatch[1];
+    });
+  });
+
+  ytdlp.stderr.on('data', (data) => {
+    data.toString().split('\n').forEach(line => {
+      if (line.trim()) jobInfo.logs.push(line.trim());
+    });
+  });
+
+  ytdlp.on('close', (code) => {
+    if (code !== 0) { jobInfo.status = 'failed'; jobInfo.error = 'yt-dlp exited with code ' + code; return; }
+
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
+      const files = fs.existsSync(jobDir)
+        ? fs.readdirSync(jobDir).filter(f => /\.(mp4|webm|mkv|m4a)$/i.test(f))
+        : [];
+      if (files.length === 0) { jobInfo.status = 'failed'; jobInfo.error = 'Downloaded file not found'; return; }
+      resolvedPath = path.join(jobDir, files[0]);
+    }
+
+    jobInfo.status   = 'completed';
+    jobInfo.filePath = resolvedPath;
+    jobInfo.filename = path.basename(resolvedPath);
+    jobInfo.logs.push('✅ Download complete! File is ready.');
+
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(resolvedPath)) fs.unlinkSync(resolvedPath);
+        if (fs.existsSync(jobDir))       fs.rmSync(jobDir, { recursive: true, force: true });
+      } catch (_) {}
+      activeIgReelJobs.delete(jobId);
+    }, 3_600_000);
+  });
+});
+
+app.get('/instagram-reel-progress/:jobId', (req, res) => {
+  const job = activeIgReelJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json({ status: job.status, logs: job.logs, error: job.error, filename: job.filename });
+});
+
+app.get('/instagram-reel-file/:jobId', (req, res) => {
+  const job = activeIgReelJobs.get(req.params.jobId);
+  if (!job || job.status !== 'completed' || !job.filePath || !fs.existsSync(job.filePath))
+    return res.status(404).json({ error: 'File not ready or already expired' });
+  res.download(job.filePath, job.filename, (err) => {
+    if (err) console.error('❌ Error sending reel file:', err);
+  });
+});
+
 app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Clip Extractor running at http://localhost:${port}`);
 });
