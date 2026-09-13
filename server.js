@@ -652,7 +652,7 @@ app.post('/youtube-download-video', async (req, res) => {
 
   res.json({ jobId });
 
-  const videoTemplate = path.join(jobDir, `video.%(ext)s`);
+  const videoTemplate = path.join(jobDir, `%(title)s.%(ext)s`);
   const { spawn }     = require('child_process');
 
   const ytdlpArgs = isAudio
@@ -703,7 +703,7 @@ app.post('/youtube-download-video', async (req, res) => {
       resolvedPath    = path.join(jobDir, preferred);
     }
 
-    const filename       = `video_${jobId}.${path.extname(resolvedPath).slice(1)}`;
+    const filename       = path.basename(resolvedPath);
     jobInfo.status   = 'completed';
     jobInfo.filePath = resolvedPath;
     jobInfo.filename = filename;
