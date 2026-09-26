@@ -67,7 +67,7 @@
 
     /* ── Sidebar ── */
     .sidebar {
-      width: 160px;
+      width: 155px;
       flex-shrink: 0;
       border-right: 1px solid var(--border-color);
       background: var(--bg);
@@ -78,44 +78,46 @@
     .sidebar-brand {
       display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 16px 16px 14px;
+      gap: 6px;
+      padding: 14px 16px 13px;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--text-primary);
       border-bottom: 1px solid var(--border-color);
       flex-shrink: 0;
     }
+    .sidebar-brand svg { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7; }
     .sidebar-nav {
       flex: 1;
-      padding: 6px 0;
+      padding: 5px 0;
       display: flex;
       flex-direction: column;
-      gap: 0;
     }
     .tab-btn {
-      display: flex;
-      align-items: center;
+      display: block;
       width: 100%;
-      padding: 7px 16px;
+      padding: 8px 16px;
       background: none;
       border: none;
       border-radius: 0;
       color: var(--text-secondary);
-      font-size: 13.5px;
+      font-size: 14px;
       font-weight: 400;
       font-family: inherit;
       cursor: pointer;
       text-align: left;
       transition: background 0.1s, color 0.1s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .tab-btn:hover { background: var(--bg-sub); color: var(--text-primary); }
-    .tab-btn.active { background: #f1f5f9; color: var(--text-primary); font-weight: 500; }
+    .tab-btn.active { background: #eef2ff; color: var(--text-primary); font-weight: 500; }
     .tab-btn svg { display: none; }
     .sidebar-user {
-      padding: 11px 16px;
+      padding: 10px 16px;
       border-top: 1px solid var(--border-color);
       display: flex;
       align-items: center;
@@ -128,23 +130,23 @@
     .user-avatar {
       width: 26px; height: 26px; border-radius: 50%;
       background: #0d9488; color: #fff;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
+      font-size: 10px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
     .user-meta { flex: 1; min-width: 0; overflow: hidden; }
     .user-name { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .user-org { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .user-chevron { font-size: 10px; color: var(--text-secondary); flex-shrink: 0; transform: rotate(180deg); }
+    .user-chevron { font-size: 9px; color: var(--text-secondary); flex-shrink: 0; }
 
     /* ── Main ── */
     .main-content { flex: 1; overflow-y: auto; background: var(--bg); }
     .main-content::-webkit-scrollbar { width: 5px; }
     .main-content::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-    .page-wrap { max-width: 1200px; margin: 0 auto; padding: 36px 40px 80px; }
-    .page-header { margin-bottom: 32px; }
-    .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-primary); }
-    .page-subtitle { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+    .page-wrap { max-width: 1280px; margin: 0 auto; padding: 36px 48px 80px; }
+    .page-header { margin-bottom: 28px; }
+    .page-title { font-size: 28px; font-weight: 800; letter-spacing: -0.04em; color: var(--text-primary); line-height: 1.1; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary); margin-top: 5px; line-height: 1.5; }
 
     /* ── Tabs ── */
     .tab-panel { display: none; }
@@ -152,13 +154,13 @@
 
     /* ── Typography helpers ── */
     .panel-heading { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; }
-    .panel-subtitle { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+    .panel-subtitle { font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
 
     /* ── Card ── */
-    .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px; margin-bottom: 12px; }
 
     /* ── Grid ── */
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 4px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 4px; }
     @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
 
     /* ── Controls ── */
@@ -253,18 +255,12 @@
   <!-- ── Sidebar ── -->
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><line x1="20" y1="4" x2="8.5" y2="15.5"/><line x1="14.5" y1="14.5" x2="20" y2="20"/><line x1="8.5" y1="8.5" x2="12" y2="12"/></svg>
       Clip Extractor
     </div>
     <nav class="sidebar-nav">
-      <button class="tab-btn active" data-tab="clip-extractor">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><line x1="20" y1="4" x2="8.5" y2="15.5"/><line x1="14.5" y1="14.5" x2="20" y2="20"/><line x1="8.5" y1="8.5" x2="12" y2="12"/></svg>
-        Clip Extractor
-      </button>
-      <button class="tab-btn" data-tab="youtube-tools">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58a2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
-        YouTube Tools
-      </button>
+      <button class="tab-btn active" data-tab="clip-extractor">Clip Extractor</button>
+      <button class="tab-btn" data-tab="youtube-tools">YouTube Tools</button>
     </nav>
     <div class="sidebar-user">
       <div class="user-avatar">HD</div>
@@ -272,7 +268,9 @@
         <div class="user-name">Himanshu Dutta</div>
         <div class="user-org">himanshu's org</div>
       </div>
-      <span class="user-chevron">⌃</span>
+      <span class="user-chevron">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </span>
     </div>
   </aside>
 
@@ -284,7 +282,7 @@
       <div class="tab-panel active" id="tab-clip-extractor">
         <div class="page-header">
           <div class="page-title">Clip Extractor</div>
-          <div class="page-subtitle">Extract, edit and schedule clips from long-form video</div>
+          <div class="page-subtitle">Extract, edit and schedule short clips from long-form video — driven by a CSV schedule.</div>
         </div>
 
         <div class="two-col">
