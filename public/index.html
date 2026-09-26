@@ -6,26 +6,26 @@
   <title>Clip Extractor</title>
   <style>
     :root {
-      --bg: #ffffff;
-      --bg-sub: #f9fafb;
-      --sidebar-bg: #ffffff;
-      --card-bg: #ffffff;
-      --border-color: #e4e4e7;
-      --accent: #2563eb;
-      --accent-bg: #eff6ff;
-      --accent-hover: #1d4ed8;
-      --text-primary: #18181b;
-      --text-secondary: #71717a;
-      --success: #16a34a;
-      --success-bg: #f0fdf4;
-      --error: #dc2626;
-      --error-bg: #fef2f2;
-      --log-bg: #f4f4f5;
-      --log-text: #3f3f46;
-      --switch-track: #d4d4d8;
-      --warning-bg: rgba(202,138,4,0.08);
-      --warning-border: rgba(202,138,4,0.25);
-      --warning-text: #92400e;
+      --bg: #0f0f11;
+      --bg-sub: #18181b;
+      --sidebar-bg: #0f0f11;
+      --card-bg: #1c1c1f;
+      --border-color: #27272a;
+      --accent: #3b82f6;
+      --accent-bg: rgba(59,130,246,0.12);
+      --accent-hover: #60a5fa;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --success: #22c55e;
+      --success-bg: rgba(34,197,94,0.1);
+      --error: #f87171;
+      --error-bg: rgba(248,113,113,0.1);
+      --log-bg: #09090b;
+      --log-text: #a1a1aa;
+      --switch-track: #3f3f46;
+      --warning-bg: rgba(202,138,4,0.1);
+      --warning-border: rgba(202,138,4,0.3);
+      --warning-text: #fbbf24;
     }
     :root[data-theme="dark"] {
       --bg: #0f0f11; --bg-sub: #18181b; --sidebar-bg: #111113;
@@ -86,7 +86,7 @@
       font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
-      color: #18181b;
+      color: #fafafa;
       border-bottom: 1px solid var(--border-color);
       flex-shrink: 0;
       line-height: 1;
@@ -105,7 +105,7 @@
       background: none;
       border: none;
       border-radius: 0;
-      color: #52525b;
+      color: #a1a1aa;
       font-size: 13px;
       font-weight: 400;
       font-family: inherit;
@@ -117,8 +117,8 @@
       text-overflow: ellipsis;
       line-height: 1.4;
     }
-    .tab-btn:hover { background: var(--bg-sub); color: #18181b; }
-    .tab-btn.active { background: #eef2ff; color: #18181b; font-weight: 500; }
+    .tab-btn:hover { background: var(--bg-sub); color: #fafafa; }
+    .tab-btn.active { background: #27272a; color: #fafafa; font-weight: 500; }
     .tab-btn svg { display: none; }
     .sidebar-user {
       padding: 10px 16px;
@@ -149,7 +149,7 @@
     .main-content::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
     .page-wrap { max-width: 1280px; margin: 0 auto; padding: 36px 48px 80px; }
     .page-header { margin-bottom: 28px; }
-    .page-title { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; color: #18181b; line-height: 1.15; }
+    .page-title { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; color: #fafafa; line-height: 1.15; }
     .page-subtitle { font-size: 13px; color: #71717a; margin-top: 6px; line-height: 1.5; max-width: 520px; }
 
     /* ── Tabs ── */
@@ -161,7 +161,7 @@
     .panel-subtitle { font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
 
     /* ── Card ── */
-    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px; margin-bottom: 10px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 10px; }
 
     /* ── Grid ── */
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 4px; }
@@ -170,10 +170,10 @@
     /* ── Controls ── */
     .control-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
     .control-input {
-      background: var(--bg);
-      border: 1px solid #e4e4e7;
+      background: var(--bg-sub);
+      border: 1px solid var(--border-color);
       border-radius: 6px;
-      color: #18181b;
+      color: var(--text-primary);
       padding: 7px 10px;
       font-size: 13px;
       font-family: inherit;
@@ -181,9 +181,9 @@
       transition: border-color 0.15s, box-shadow 0.15s;
       min-width: 0;
     }
-    .control-input:focus { border-color: #a1a1aa; box-shadow: none; }
+    .control-input:focus { border-color: #52525b; box-shadow: none; }
     select.control-input { cursor: pointer; }
-    .control-label { font-size: 13px; color: #3f3f46; white-space: nowrap; flex-shrink: 0; }
+    .control-label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
 
     /* ── Buttons ── */
     .btn-generate {
@@ -266,16 +266,6 @@
       <button class="tab-btn active" data-tab="clip-extractor">Clip Extractor</button>
       <button class="tab-btn" data-tab="youtube-tools">YouTube Tools</button>
     </nav>
-    <div class="sidebar-user">
-      <div class="user-avatar">HD</div>
-      <div class="user-meta">
-        <div class="user-name">Himanshu Dutta</div>
-        <div class="user-org">himanshu's org</div>
-      </div>
-      <span class="user-chevron">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
-      </span>
-    </div>
   </aside>
 
   <!-- ── Main ── -->
