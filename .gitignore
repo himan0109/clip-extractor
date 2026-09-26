@@ -26,3 +26,6 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local fonts (personal assets — not redistributable)
+public/fonts/

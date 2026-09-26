@@ -5,6 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Clip Extractor</title>
   <style>
+    @font-face {
+      font-family: 'TuskerGrotesk';
+      src: url('/fonts/TuskerGrotesk-4600Semibold.ttf') format('truetype');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'TuskerGrotesk';
+      src: url('/fonts/TuskerGrotesk-3700Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PlusJakartaSans';
+      src: url('/fonts/PlusJakartaSans-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PlusJakartaSans';
+      src: url('/fonts/PlusJakartaSans-Medium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PlusJakartaSans';
+      src: url('/fonts/PlusJakartaSans-SemiBold.ttf') format('truetype');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+
     :root {
       --bg: #0f0f11;
       --bg-sub: #18181b;
@@ -53,7 +89,7 @@
     body {
       background: var(--bg);
       color: var(--text-primary);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-family: 'PlusJakartaSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 13px;
       line-height: 1.5;
       height: 100vh;
@@ -82,9 +118,10 @@
       align-items: center;
       gap: 6px;
       padding: 13px 16px 12px;
-      font-size: 10.5px;
-      font-weight: 700;
-      letter-spacing: 0.07em;
+      font-family: 'TuskerGrotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       color: #fafafa;
       border-bottom: 1px solid var(--border-color);
@@ -149,7 +186,7 @@
     .main-content::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
     .page-wrap { max-width: 1280px; margin: 0 auto; padding: 36px 48px 80px; }
     .page-header { margin-bottom: 28px; }
-    .page-title { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; color: #fafafa; line-height: 1.15; }
+    .page-title { font-family: 'TuskerGrotesk', sans-serif; font-size: 32px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #fafafa; line-height: 1.05; }
     .page-subtitle { font-size: 13px; color: #71717a; margin-top: 6px; line-height: 1.5; max-width: 520px; }
 
     /* ── Tabs ── */
