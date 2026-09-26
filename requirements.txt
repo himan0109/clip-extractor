@@ -1,0 +1,10 @@
+google-auth>=2.0.0
+google-auth-oauthlib>=1.0.0
+google-api-python-client>=2.0.0
+requests>=2.28.0
+pandas>=1.5.0
+openpyxl>=3.1.0
+whisper-timestamped>=1.12.0
+srt>=3.5.0
+langdetect>=1.0.9
+opencv-python>=4.8.0

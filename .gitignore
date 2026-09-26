@@ -1,4 +1,28 @@
 node_modules/
-package-lock.json
 .env
 dist/
+
+# Credential files — never commit OAuth tokens or API secrets
+youtube_credentials.json
+youtube_oauth_config.json
+facebook_credentials.json
+facebook_oauth_config.json
+
+# Runtime directories
+uploads/
+output/
+pictures/
+
+# Temp config files created during processing
+temp_clipout_config_*.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
